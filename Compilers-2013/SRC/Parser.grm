@@ -1,0 +1,88 @@
+%{
+  (* See the Moscow ML manual for the syntax and structure. Roughly:
+   *
+   * `%``{`
+   *     header (* with ML-like comments *)
+   * `%``}`
+   *     declarations  /* with c-like comments */
+   * `%``%`
+   *     rules         /* with c-like comments */
+   * `%``%`
+   *     trailer (* with ML-like comments *)
+   * EOF
+   *
+   * The (optional) header and trailer contain ML code to include in the
+   * generated file (after the data declaration and at the end).
+   *
+   * Compiling this file with:
+   *     $ mosmlyac -v G_AB.grm
+   * will generate the code in "G_AB.sig" and "G_AB.sml" files, and a
+   * file "G_AB.output" which describes the generated LR(0) automaton.
+   *)
+
+  type pos   = int    (* position in string *)
+  type ident = string (* identifier *)
+  (* Unfortunately, we cannot use these types in the declarations -
+   * the code ends up _after_ the data declaration. *)
+
+  (* parse exception *)
+  exception SyntaxError of string * pos
+%}
+
+/* Token type definitions (will often be used in the Lexer) */
+
+/* Tokens use position attribute for demonstration (see below for Lexer)
+ * As mentioned, the SML code above ends up _after_ this data declaration,
+ * so we cannot use any types defined _above_ at this point of the file.
+ */
+
+/* Keywords */
+%token <int> TProgram   TFunction   TProcedure
+%token <int> TVar       TBegin      TEnd
+%token <int> TIf        TThen       TElse
+%token <int> TWhile     TDo         TReturn
+
+/* Type keywords */
+%token <int> TArray     TOf
+%token <int> TInt       TChar       TBool
+
+/* Symbols */
+%token <int> TSemi      TColon      TComma      TAssign
+
+/* Operations */
+%token <int> TPlus      TMinus      TTimes      TSlash /* arithmetic */
+%token <int> TEq        TLess       TAnd               /* comparison and bool */
+
+/* Parentheses of different kind */
+%token <int> TLParen    TRParen
+%token <int> TLCurly    TRCurly
+%token <int> TLBracket  TRBracket
+
+/* Identifiers */
+%token <string * int>   TId 
+
+/* Literals */
+%token <int * int>      TNLit
+%token <bool * int>     TBLit
+%token <char * int>     TCLit
+%token <string * int>   TSLit
+
+/* EOF special token */
+%token <int>            TEOF
+
+%%
+
+/* rules - a separate start rule is added automatically */
+
+
+
+%%
+
+(* SML trailer
+*
+ * At this point we can use the parse function (%start above), whose type is
+ *   Start : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> Exp;
+ *
+ * (Lexing.lexbuf -> token) is usually mosmllex-generated.
+ *
+ *)
