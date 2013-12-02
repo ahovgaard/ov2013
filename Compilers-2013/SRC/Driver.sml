@@ -67,8 +67,10 @@ struct
       | LL1Parser.Error s =>
          errorMsgAt ("Parse error: " ^ s) (Lexer.getPos lexbuf)
       *)
+        Parsing.ParseError ob =>
+          errorMsgAt "Parsing error" (Lexer.getPos lexbuf)
 
-        Lexer.LexicalError (mess, pos) =>
+      | Lexer.LexicalError (mess, pos) =>
           errorMsgAt ("Lexing error: "  ^ mess) pos
 
       | TpInterpret.Error (mess, pos) =>

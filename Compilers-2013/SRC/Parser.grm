@@ -24,7 +24,7 @@
    * the code ends up _after_ the data declaration. *)
 
   (* parse exception *)
-  exception SyntaxError of string * Pos
+  exception ParseError of string * Pos
 
 
   (* Get position tuple from Location structure, for error reporting *)
@@ -83,17 +83,32 @@
  *****************************************************************************/
 
 /* Program structure */
-%type <AbSyn.Prog> Prog
+%type <AbSyn.Prog>        Prog
 %type <AbSyn.FunDec list> FunDecs
-%type <AbSyn.FunDec> FunDec
-%type <AbSyn.StmtBlock> Block
+%type <AbSyn.FunDec>      FunDec
+%type <AbSyn.StmtBlock>   Block
+%type <AbSyn.Dec list>    DBlock
+%type <AbSyn.Stmt list>   SBlock
+%type <AbSyn.Stmt list>   StmtSeq
 
 /* Variables and parameter declarations, types */
-%type <AbSyn.Dec list> PDecl
-%type <AbSyn.Dec list> Params
-%type <AbSyn.Dec> Dec
-%type <AbSyn.Dec list> Decs
-%type <AbSyn.Type> Type
+%type <AbSyn.Dec list>    PDecl
+%type <AbSyn.Dec list>    Params
+%type <AbSyn.Dec>         Dec
+%type <AbSyn.Dec list>    Decs
+%type <AbSyn.Type>        Type
+
+/* Statements */
+%type <AbSyn.Stmt>        Stmt
+
+/* Function and procedure parameters and index lists */
+%type <AbSyn.Exp list>    CallParams
+%type <AbSyn.Exp list>    Exps
+
+/* L-Values and expressions */
+%type <AbSyn.LVAL>        LVal
+%type <AbSyn.Exp option>  Ret
+%type <AbSyn.Exp>         Exp
 
 
 %%
@@ -103,31 +118,40 @@
  *****************************************************************************/
 
 /* Program structure */
-Prog    : TProgram TId TSemi FunDecs { $4 }   /* $4 : AbSyn.FunDec list */
+Prog    : TProgram TId TSemi FunDecs TEOF { $4 } /* $4 : AbSyn.FunDec list */
 
 FunDecs : FunDecs FunDec { $1 @ [$2] }
-        | FunDec { [$1] }
+        | FunDec         { [$1] }
 
 FunDec  : TFunction TId TLParen PDecl TRParen TColon Type Block TSemi
-            { AbSyn.Func ($7, #1 $2, $4, $8, getPos ()) }
             /* Func of Type * Ident * Dec list * StmtBlock * Pos */
+            { AbSyn.Func ($7, #1 $2, $4, $8, getPos ()) }
         | TProcedure TId TLParen PDecl TRParen Block TSemi
-            { AbSyn.Proc (#1 $2, $4, $6, getPos ()) }
             /* Proc of Ident * Dec list * StmtBlock * Pos */
+            { AbSyn.Proc (#1 $2, $4, $6, getPos ()) }
 
-Block   : { AbSyn.Block ([], []) }
+Block   : DBlock SBlock { AbSyn.Block ($1, $2) }
+
+DBlock  : TVar Decs { $2 } /* $2 : AbSyn.Dec list */
+        |           { [] }
+
+SBlock  : TBegin StmtSeq TSemi TEnd { $2 } /* $2 : AbSyn.Stmt list */
+        | Stmt                      { [$1] } /* $1 : AbSyn.Stmt */
+
+StmtSeq : StmtSeq TSemi Stmt { $1 @ [$3] }  /* AbSyn.Stmt list */
+        | Stmt               { [$1] }
 
 
 /* Variables and parameter declarations, types */
-PDecl  : Params             { $1 }
+PDecl  : Params             { $1 } /* AbSyn.Dec list */
        |                    { [] }
 
-Params : Params TSemi Dec   { $1 @ [$3] }
+Params : Params TSemi Dec   { $1 @ [$3] } /* AbSyn.Dec list */
        | Dec                { [$1] }
 
-Dec    : TId TColon Type    { AbSyn.Dec (#1 $1, $3, getPos ()) }
-                            /* Dec of Ident * Type * Pos */
-
+Dec    : TId TColon Type    /* AbSyn.Dec of Ident * Type * Pos */
+                            { AbSyn.Dec (#1 $1, $3, getPos ()) }
+                            
 Decs   : Decs Dec TSemi     { $1 @ [$2] }
        | Dec TSemi          { [$1] }
 
@@ -136,13 +160,47 @@ Type   : TInt               { AbSyn.Int (getPos ()) }
        | TBool              { AbSyn.Bool (getPos ()) }
        | TArray TOf Type    { AbSyn.Array ($3, getPos ()) }
 
+
+/* Statements */
+Stmt : TId TLParen CallParams TRParen  /* ProcCall of Ident * Exp list * Pos */
+                                       { AbSyn.ProcCall (#1 $1, $3, getPos ()) }
+     /*| TIf Exp TThen Block             /* IfThEl of Exp * StmtBlock * StmtBLock * Pos */
+                                       /* { AbSyn.IfThEl ($2, $4, [], getPos ()) } */
+     | TIf Exp TThen Block TElse Block /* IfThEl of Exp * StmtBlock * StmtBlock * Pos */
+                                       { AbSyn.IfThEl ($2, $4, $6, getPos ()) }
+     | TWhile Exp TDo Block            /* While of Exp * StmtBlock * Pos */
+                                       { AbSyn.While ($2, $4, getPos ()) }
+     | TReturn Ret                     /* Return of Exp option * Pos */
+                                       { AbSyn.Return ($2, getPos ()) }
+     | LVal TAssign Exp                /* Assign of LVAL * Exp * Pos */
+                                       { AbSyn.Assign ($1, $3, getPos ()) }
+
+/* Function and procedure parameters and index lists */
+CallParams : Exps { $1 }
+           |      { [] }
+
+Exps       : Exp TComma Exps { $1 :: $3 }
+           | Exp             { [$1] }
+
+
+/* L-Values and expressions */
+LVal : TId                          { AbSyn.Var (#1 $1) }
+     | TId TLBracket Exps TRBracket { AbSyn.Index (#1 $1, $3) }
+
+Ret  : Exp { SOME $1 } /* AbSyn.Exp option */
+     |     { NONE }
+
+Exp  : TNLit { AbSyn.Literal ( AbSyn.BVal (AbSyn.Num (#1 $1)), getPos ()) }
+     | TBLit { AbSyn.Literal ( AbSyn.BVal (AbSyn.Log (#1 $1)), getPos ()) }
+     | TCLit { AbSyn.Literal ( AbSyn.BVal (AbSyn.Chr (#1 $1)), getPos ()) }
+     | TSLit { AbSyn.StrLit (#1 $1, getPos ()) }
+     | TLCurly Exps TRCurly { AbSyn.ArrLit ($2, getPos ()) }
+     | LVal { AbSyn.LValue ($1, getPos ()) }
+     /* TODO: NOT Exp, Exp OP Exp */
+     | TLParen Exp TRParen { $2 }
+     | TId TLParen CallParams TRParen { AbSyn.FunApp (#1 $1, $3, getPos ()) }
+     /* TODO: OP */
+
 %%
 
-(* SML trailer
- *
- * At this point we can use the parse function (%start above), whose type is
- *   Start : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> Exp;
- *
- * (Lexing.lexbuf -> token) is usually mosmllex-generated.
- *
- *)
+(* mosmlyac trailer *)
