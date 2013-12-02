@@ -51,27 +51,24 @@ struct
       val lexbuf = createLexerStream (BasicIO.open_in inpath)
     in
       let
-        val pgm = LL1Parser.parse Lexer.Token lexbuf
-        (* COMMENT LINE ABOVE AND UNCOMMENT  *)
-        (* THE LINE BELOW TO USE YOUR PARSER *)
-        (* val pgm = Parser.Prog Lexer.Token lexbuf *)
+        (*val pgm = LL1Parser.parse Lexer.Token lexbuf*)
+        val pgm = Parser.Prog Lexer.Token lexbuf
       in case arg of
         "-ti" => typedInterpret (typeCheck pgm)
       | "-c"  => compileNormal pgm outpath
       | other => print ("'" ^ other ^ "': Unknown mode of operation.\n")
       end
       handle
+      (* FIXME: What does "Parsing" refer to and which are needed?
         Parsing.yyexit ob => errorMsg "Parser-exit\n"
       | Parsing.ParseError ob =>
           errorMsgAt "Parsing error" (Lexer.getPos lexbuf)
-          (* COMMENT LINE ABOVE AND UNCOMMENT  *)
-          (* THE LINE BELOW TO USE YOUR PARSER *)
-          (* errorMsgAt "Parsing error" (Lexer.getPos lexbuf) *)
 
       | LL1Parser.Error s =>
          errorMsgAt ("Parse error: " ^ s) (Lexer.getPos lexbuf)
+      *)
 
-      | Lexer.LexicalError (mess, pos) =>
+        Lexer.LexicalError (mess, pos) =>
           errorMsgAt ("Lexing error: "  ^ mess) pos
 
       | TpInterpret.Error (mess, pos) =>

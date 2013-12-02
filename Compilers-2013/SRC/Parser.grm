@@ -3,12 +3,15 @@
    *
    * `%``{`
    *     header (* with ML-like comments *)
+   *     Any SML code is copied to the beginning of Parser.sml, after the token
+   *     datatype declaration.
    * `%``}`
    *     declarations  /* with c-like comments */
    * `%``%`
    *     rules         /* with c-like comments */
    * `%``%`
    *     trailer (* with ML-like comments *)
+   *     Any SML code is copied to the end of Parser.sml.
    * EOF
    *
    * The (optional) header and trailer contain ML code to include in the
@@ -21,7 +24,14 @@
    * the code ends up _after_ the data declaration. *)
 
   (* parse exception *)
-  exception SyntaxError of string * pos
+  exception SyntaxError of string * Pos
+
+
+  (* Get position tuple from Location structure, for error reporting *)
+  fun getPos () =
+    case Location.getCurrentLocation () of
+         Location.Loc (l, r) => (l, r)
+       | _ => raise Fail "could not get location" (* shouldn't happen *)
 %}
 
 /* Token type definitions (will often be used in the Lexer) */
@@ -54,13 +64,13 @@
 %token <int * int> TLBracket  TRBracket
 
 /* Identifiers */
-%token <string * (int * int)>   TId 
+%token <string * (int * int)> TId 
 
 /* Literals */
-%token <int * (int * int)>      TNLit
-%token <bool * (int * int)>     TBLit
-%token <char * (int * int)>     TCLit
-%token <string * (int * int)>   TSLit
+%token <int * (int * int)>    TNLit
+%token <bool * (int * int)>   TBLit
+%token <char * (int * int)>   TCLit
+%token <string * (int * int)> TSLit
 
 /* EOF special token */
 %token <int * int>            TEOF
@@ -99,10 +109,10 @@ FunDecs : FunDecs FunDec { $1 @ [$2] }
         | FunDec { [$1] }
 
 FunDec  : TFunction TId TLParen PDecl TRParen TColon Type Block TSemi
-            { AbSyn.Func ($7, $2, $4, $8, getPos ()) }
+            { AbSyn.Func ($7, #1 $2, $4, $8, getPos ()) }
             /* Func of Type * Ident * Dec list * StmtBlock * Pos */
         | TProcedure TId TLParen PDecl TRParen Block TSemi
-            { AbSyn.Proc ($2, $4, $6, getPos ()) }
+            { AbSyn.Proc (#1 $2, $4, $6, getPos ()) }
             /* Proc of Ident * Dec list * StmtBlock * Pos */
 
 Block   : { AbSyn.Block ([], []) }
@@ -115,7 +125,7 @@ PDecl  : Params             { $1 }
 Params : Params TSemi Dec   { $1 @ [$3] }
        | Dec                { [$1] }
 
-Dec    : TId TColon Type    { AbSyn.Dec ($1, $3, getPos ()) }
+Dec    : TId TColon Type    { AbSyn.Dec (#1 $1, $3, getPos ()) }
                             /* Dec of Ident * Type * Pos */
 
 Decs   : Decs Dec TSemi     { $1 @ [$2] }
@@ -136,8 +146,3 @@ Type   : TInt               { AbSyn.Int (getPos ()) }
  * (Lexing.lexbuf -> token) is usually mosmllex-generated.
  *
  *)
-
-(* Get position tuple from Location structure, for error reporting *)
-fun getPos () = case Location.getCurrentLocation of
-                     Location.Loc (l, r) => (l, r)
-                   | raise error "could not get location" (* shouldn't happen *)
