@@ -31,7 +31,6 @@
   fun getPos () =
     case Location.getCurrentLocation () of
          Location.Loc (l, r) => (l, r)
-       | _ => raise Fail "could not get location" (* shouldn't happen *)
 %}
 
 /* Token type definitions (will often be used in the Lexer) */
