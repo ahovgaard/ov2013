@@ -86,6 +86,9 @@
 %left TPlus TMinus
 %left TTimes TSlash
 
+/* fixed the Decs problem with nonassoc */ 
+%nonassoc TId TSemi
+
 /* high precedence, right associative, unary operator 'not' */
 %right TNot
 
