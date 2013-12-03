@@ -86,11 +86,13 @@
 %left TPlus TMinus
 %left TTimes TSlash
 
-/* fixed the Decs problem with nonassoc */ 
-%nonassoc TId TSemi
 
 /* high precedence, right associative, unary operator 'not' */
 %right TNot
+
+/* fixed the Decs problem with nonassoc */ 
+%nonassoc TSemi
+%nonassoc TId
 
 /* Start symbol */
 %start Prog
