@@ -43,10 +43,14 @@
 \date{December 6, 2013}
 \maketitle
 
+
+\section{Parser implementation in mosmlyac}
+
+
 \section{Resolving parse conflicts}
 We fixed the dangling-else ambiguity by making the \texttt{then} and
-\texttt{else} symbols right-associative and giving them the same precedence.
-I.e. by using the following mosmlyac declaration:
+\texttt{else} symbols right-associative and giving them the same precedence,
+i.e. by using the following mosmlyac declaration:
 \begin{verbatim}
   %right TThen TElse 
 \end{verbatim}
