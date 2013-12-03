@@ -75,6 +75,14 @@
 /* EOF special token */
 %token <int * int>            TEOF
 
+
+/* Precedence and associativity */
+%left TAnd
+%left TEq 
+%nonassoc TLess
+%left TPlus TMinus
+%left TTimes TSlash
+
 /* Start symbol */
 %start Prog
 

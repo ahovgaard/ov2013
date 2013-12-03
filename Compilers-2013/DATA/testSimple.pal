@@ -1,0 +1,18 @@
+program simpleTest;
+
+procedure main()
+var a : int;
+    b : int;
+    c : int;
+    r : int;
+begin write("write a: \n");
+      a := read();
+      write("write b: \n");
+      b := read();
+      write("write c: \n");
+      c := read();
+      write("a + b * c = \n");
+      r := a + b * c;
+      write(r);
+      write('\n');
+end;
