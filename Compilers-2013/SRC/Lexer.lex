@@ -28,32 +28,29 @@
      be to encode every keyword as a regexp. This one is much easier. *)
   fun keyword (s, pos) =
     case s of
-         "program"    => Parser.TProgram   pos
-       | "function"   => Parser.TFunction  pos
-       | "procedure"  => Parser.TProcedure pos
-       | "var"        => Parser.TVar       pos
-       | "begin"      => Parser.TBegin     pos
-       | "end"        => Parser.TEnd       pos
-       | "if"         => Parser.TIf        pos
-       | "then"       => Parser.TThen      pos
-       | "else"       => Parser.TElse      pos
-       | "while"      => Parser.TWhile     pos
-       | "do"         => Parser.TDo        pos
-       | "return"     => Parser.TReturn    pos
-       | "array"      => Parser.TArray     pos
-       | "of"         => Parser.TOf        pos
-       | "int"        => Parser.TInt       pos
-       | "bool"       => Parser.TBool      pos
-       | "char"       => Parser.TChar      pos
-       | "and"        => Parser.TAnd       pos
-       (* not active yet, not in LL1Parser
-       | "or"           => LL1Parser.TOr     pos
-       | "not"          => LL1Parser.TNot    pos
-       *)
-       | "true"       => Parser.TBLit (true, pos)
+         "program"    => Parser.TProgram      pos
+       | "function"   => Parser.TFunction     pos
+       | "procedure"  => Parser.TProcedure    pos
+       | "var"        => Parser.TVar          pos
+       | "begin"      => Parser.TBegin        pos
+       | "end"        => Parser.TEnd          pos
+       | "if"         => Parser.TIf           pos
+       | "then"       => Parser.TThen         pos
+       | "else"       => Parser.TElse         pos
+       | "while"      => Parser.TWhile        pos
+       | "do"         => Parser.TDo           pos
+       | "return"     => Parser.TReturn       pos
+       | "array"      => Parser.TArray        pos
+       | "of"         => Parser.TOf           pos
+       | "int"        => Parser.TInt          pos
+       | "bool"       => Parser.TBool         pos
+       | "char"       => Parser.TChar         pos
+       | "and"        => Parser.TAnd          pos
+       | "or"         => Parser.TOr           pos
+       | "not"        => Parser.TNot          pos
+       | "true"       => Parser.TBLit (true,  pos)
        | "false"      => Parser.TBLit (false, pos)
-
-       | _            => Parser.TId (s, pos)
+       | _            => Parser.TId       (s, pos)
 
   (* "lex" will later be the generated function "Token" *)
   fun repeat lex b = let val res = lex b

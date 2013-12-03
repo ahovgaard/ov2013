@@ -22,6 +22,18 @@
 % lstlisting environment for source code
 \usepackage{listings}
 
+% listings config for writing context-free grammars
+\lstset{
+  basicstyle=\ttfamily,
+  columns = fixed,
+  mathescape,
+  xleftmargin=5em,
+  literate={->}{$\rightarrow$}{2}
+           {alpha}{$\alpha$}{1}
+           {delta}{$\delta$}{1}
+           {epsilon}{$\varepsilon$}{1}
+}
+
 \begin{document}
 \title{Introduction to Compilers (OV)\\
        Milestone status report}
@@ -31,6 +43,24 @@
 \date{December 6, 2013}
 \maketitle
 
+\section{Resolving parse conflicts}
+We fixed the dangling-else ambiguity by making the \texttt{then} and
+\texttt{else} symbols right-associative and giving them the same precedence.
+I.e. by using the following mosmlyac declaration:
+\begin{verbatim}
+  %right TThen TElse 
+\end{verbatim}
+
+\section{Changes to the Paladim grammar}
+\begin{lstlisting}
+  $Decs$  ->    $Decs$ $Dec$ ;
+  $Decs$  ->    $Dec$ ;
+\end{lstlisting}
+\begin{lstlisting}
+  $Decs$    ->   $Dec$ ; $Decs1$
+  $Decs1$   ->    $Decs$
+  $Decs1$   ->    epsilon
+\end{lstlisting}
 
 
 \begin{thebibliography}{9}

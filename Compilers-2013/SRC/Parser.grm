@@ -56,7 +56,8 @@
 
 /* Operations */
 %token <int * int> TPlus      TMinus      TTimes      TSlash /* arithmetic */
-%token <int * int> TEq        TLess       TAnd        TNot   /* comparison and bool */
+%token <int * int> TEq        TLess                          /* comparison */
+%token <int * int> TAnd       TOr         TNot               /* bool */
 
 /* Parentheses of different kind */
 %token <int * int> TLParen    TRParen
@@ -75,13 +76,20 @@
 /* EOF special token */
 %token <int * int>            TEOF
 
-
 /* Precedence and associativity */
+/* fixing the dangling-else ambiguity */
+
+%right TThen TElse 
+
+%left TOr
 %left TAnd
 %left TEq 
-%nonassoc TLess
+%left TLess
 %left TPlus TMinus
 %left TTimes TSlash
+
+/* high precedence, right associative, unary operator 'not' */
+%right TNot
 
 /* Start symbol */
 %start Prog
@@ -106,6 +114,8 @@
 %type <AbSyn.Dec list>    Decs
 %type <AbSyn.Type>        Type
 
+%type <AbSyn.Dec list>    Decs1
+
 /* Statements */
 %type <AbSyn.Stmt>        Stmt
 
@@ -117,8 +127,7 @@
 %type <AbSyn.LVAL>        LVal
 %type <AbSyn.Exp option>  Ret
 %type <AbSyn.Exp>         Exp
-%type <AbSyn.Exp * AbSyn.Exp * Pos -> AbSyn.Exp> OP
-
+/*%type <AbSyn.Exp * AbSyn.Exp * Pos -> AbSyn.Exp> OP*/
 
 %%
 
@@ -161,8 +170,13 @@ Params : Params TSemi Dec   { $1 @ [$3] } /* AbSyn.Dec list */
 Dec    : TId TColon Type    /* AbSyn.Dec of Ident * Type * Pos */
                             { AbSyn.Dec (#1 $1, $3, getPos ()) }
                             
-Decs   : Decs Dec TSemi     { $1 @ [$2] }
+Decs   : Dec TSemi Decs     { $1 :: $3 }
        | Dec TSemi          { [$1] }
+
+/*Decs   : Dec TSemi Decs1    { $1 :: $3 }
+
+Decs1  : Decs               { $1 }
+       |                    { [] }*/
 
 Type   : TInt               { AbSyn.Int (getPos ()) }
        | TChar              { AbSyn.Char (getPos ()) }
@@ -173,16 +187,24 @@ Type   : TInt               { AbSyn.Int (getPos ()) }
 /* Statements */
 Stmt : TId TLParen CallParams TRParen  /* ProcCall of Ident * Exp list * Pos */
                                        { AbSyn.ProcCall (#1 $1, $3, getPos ()) }
-     /*| TIf Exp TThen Block             /* IfThEl of Exp * StmtBlock * StmtBLock * Pos */
-                                       /* { AbSyn.IfThEl ($2, $4, [], getPos ()) } */
-     | TIf Exp TThen Block TElse Block /* IfThEl of Exp * StmtBlock * StmtBlock * Pos */
-                                       { AbSyn.IfThEl ($2, $4, $6, getPos ()) }
+     | TIf Exp TThen Block TElse Block
+         /* IfThEl of Exp * StmtBlock * StmtBlock * Pos */
+         { AbSyn.IfThEl ($2, $4, $6, getPos ()) }
+     | TIf Exp TThen Block            
+         /* IfThEl of Exp * StmtBlock * StmtBLock * Pos */
+         { AbSyn.IfThEl ($2, $4, AbSyn.Block ([], []), getPos ()) }
      | TWhile Exp TDo Block            /* While of Exp * StmtBlock * Pos */
                                        { AbSyn.While ($2, $4, getPos ()) }
      | TReturn Ret                     /* Return of Exp option * Pos */
                                        { AbSyn.Return ($2, getPos ()) }
      | LVal TAssign Exp                /* Assign of LVAL * Exp * Pos */
                                        { AbSyn.Assign ($1, $3, getPos ()) }
+
+/*MatchedIf:   TIf Exp TThen Block TElse Block 
+               { AbSyn.IfThEl ($2, $4, $6, getPos ()) }
+UnmatchedIf: TIf Exp TThen Block 
+               { AbSyn.IfThEl ($2, $4, AbSyn.Block ([], []), getPos ()) }*/
+
 
 /* Function and procedure parameters and index lists */
 CallParams : Exps { $1 }
@@ -205,18 +227,29 @@ Exp  : TNLit { AbSyn.Literal ( AbSyn.BVal (AbSyn.Num (#1 $1)), getPos ()) }
      | TSLit { AbSyn.StrLit (#1 $1, getPos ()) }
      | TLCurly Exps TRCurly { AbSyn.ArrLit ($2, getPos ()) }
      | LVal { AbSyn.LValue ($1, getPos ()) }
-     /* TODO: NOT Exp */
+     | TNot Exp { AbSyn.Not ($2, getPos ()) }
      | TLParen Exp TRParen { $2 }
      | TId TLParen CallParams TRParen { AbSyn.FunApp (#1 $1, $3, getPos ()) }
-     | Exp OP Exp { $2 ($1, $3, getPos ()) }
 
-OP   : TPlus  { AbSyn.Plus }
+     | Exp TPlus  Exp { AbSyn.Plus ($1, $3, getPos ()) }
+     | Exp TMinus Exp { AbSyn.Minus ($1, $3, getPos ()) }
+     | Exp TTimes Exp { AbSyn.Times ($1, $3, getPos ()) }
+     | Exp TSlash Exp { AbSyn.Div ($1, $3, getPos ()) }
+     | Exp TEq    Exp { AbSyn.Equal ($1, $3, getPos ()) }
+     | Exp TLess  Exp { AbSyn.Less ($1, $3, getPos ()) }
+     | Exp TAnd   Exp { AbSyn.And ($1, $3, getPos ()) }
+     | Exp TOr    Exp { AbSyn.Or ($1, $3, getPos ()) }
+
+     /*| Exp OP Exp { $2 ($1, $3, getPos ()) }*/
+
+/*OP   : TPlus  { AbSyn.Plus }
      | TMinus { AbSyn.Minus }
      | TTimes { AbSyn.Times }
      | TSlash { AbSyn.Div }
      | TEq    { AbSyn.Equal }
      | TLess  { AbSyn.Less }
      | TAnd   { AbSyn.And }
+     | TOr    { AbSyn.Or }*/
 
 %%
 
