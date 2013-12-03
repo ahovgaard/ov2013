@@ -28,9 +28,8 @@
 
 
   (* Get position tuple from Location structure, for error reporting *)
-  fun getPos () =
-    case Location.getCurrentLocation () of
-         Location.Loc (l, r) => (l, r)
+  fun getPos () = case Location.getCurrentLocation () of
+                       Location.Loc (l, r) => (l, r)
 %}
 
 /* Token type definitions (will often be used in the Lexer) */
