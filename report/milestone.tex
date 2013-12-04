@@ -109,7 +109,7 @@ i.e. by using the following mosmlyac declaration:
 \noindent
 We had a shift/reduce conflict with the modified productions of the $Decs$
 nonterminal (which you can see in the changes to the paladin grammar section).
-The way we solved the problem was to force a reduce over a shift by making
+The way we solved that problem was to force a reduce over a shift by making
 \texttt{TId} and \texttt{TSemi} non-associative, which fixed the conflict
 problem. \\
 \\
@@ -154,7 +154,7 @@ to
 
 
 \section{Testing methodology}
-At the current time in the space-time continuum we are only able to compile a
+At the current point in the space-time continuum we are only able to compile a
 subset of the programs included in the \textbf{DATA}-folder. Those programs
 are:\\
 \begin{enumerate}
@@ -176,8 +176,8 @@ precedence was correct - which it is.
 \\
 \\
 Whenever we had made some major changes to the parser, we would run all the
-aforementioned pal files in interpreter and compile mode to see if everything
-still works. Before we even started coding the grammar for the parser, we saw
+aforementioned pal files in interpreter- and compile-mode to check if everything
+still worked. Before we even started coding the grammar for the parser, we saw
 how the LL(1) parser handled the aforementioned pal files, and since we are
 building a replacement for the LL(1) parser, our new parser should at least
 handle the same files and give the same output as the LL parser. It was
@@ -193,10 +193,10 @@ yacc, we rewrote the grammar from the given grammar. Using our knowledge of LR
 parsers to handle shift/reduce conflicts, we used associativity to handle
 reduce/shift conflicts. By testing all of our changes to the parser, we can be
 quite certain that it actually works as intended, and even though we didn't do
-really structured test cases, we did test quite a lot. I think in the later
+really structured test cases, we did test quite a lot. We think in the later
 parts of the project a more structured testing approach would be better, but we
 felt that the tests were quite simple for the parser, and therefore testing of
-the already given pal files and our grammaTester script were enough.
+the already given pal files and our grammarrrrTester script were enough.
 
 \newpage
 \appendix
