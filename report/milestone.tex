@@ -53,24 +53,32 @@ while f.ex. evaluation of boolean expressions will be saved for later.
 
 \section{Parser implementation in mosmlyac}
 
+Our main goal was to create the same language as the LL(1) parser. We started with the grammar, which was given with the 
+assignment. We then modified the grammar to conform with mosmlyacc, and also modified certain areas of the grammar that was
+giving conflicts(You can see the conflicts we had in the resolving parse conflicts section.).
+
 
 \section{Resolving parse conflicts}
 We fixed the dangling-else ambiguity by making the \texttt{then} and
 \texttt{else} symbols right-associative and giving them the same precedence,
 i.e. by using the following mosmlyac declaration:
+
 \begin{verbatim}
   %right TThen TElse 
 \end{verbatim}
+\
+We had a shift/reduce conflict with the modified Decs grammar(which you can see in the changes to the paladin grammar section). The
+way we solved the problem was to force a reduce over a shift by making Tid and TSemi non associative, which fixed the conflict problem.
+
 
 \section{Changes to the Paladim grammar}
 \begin{lstlisting}
-  $Decs$  ->    $Decs$ $Dec$ ;
+  $Decs$  ->    $Decs$ $Dec$ ; 
   $Decs$  ->    $Dec$ ;
 \end{lstlisting}
 \begin{lstlisting}
-  $Decs$    ->   $Dec$ ; $Decs1$
-  $Decs1$   ->    $Decs$
-  $Decs1$   ->    epsilon
+  $Decs$    ->   $Dec$ ; $Decs$
+  $Decs$   ->    $Dec$ ;
 \end{lstlisting}
 
 \section{Testing methodology}
@@ -83,6 +91,20 @@ of the programs included in the \textbf{DATA}-folder. Those programs are:\\
   \item readtest.pal
   \item shortest.pal
 \end{enumerate}
+
+Also whenever we changed something new in the grammar, e.g. modified some precedence for the Expression, we would use our grammar
+script which allows us to create the AbSyn syntax tree without it being further processed. This was quite handy since we can actually
+test things that aren't implemented yet for the compiler, typecheck, etc. A good example of the usage of the grammar script was
+when we had to test the 'or' and 'not' operators. Since the compiler still does not support these operations, we had to use this script
+to see if our precedence was correct - which it is.
+\\
+\\
+Whenever we had made some major changes to the parser, we would run all the aforementioned pal files
+in interpreter and compile mode to see if everything still works. Before we even started coding the grammar for the parser, we 
+saw how the LL(1) parser handled the aforementioned pal files, and since we are building a replacement for the LL(1) parser, our new
+parser should at least handle the same files and give the same output as the LL parser. It was therefore fairly easy to see if the parser
+tests were correct, regarding the pal files.
+
 
 \section{Conclusion}
 
