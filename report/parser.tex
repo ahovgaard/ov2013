@@ -1,3 +1,5 @@
+\section{\texttt{mosmlyac} parser generator code} \label{app:grm}
+\begin{lstlisting}[style=MLStyle]
 %{
   (* See the Moscow ML manual for the syntax and structure. Roughly:
    *
@@ -234,3 +236,4 @@ Exp  : TNLit { AbSyn.Literal ( AbSyn.BVal (AbSyn.Num (#1 $1)), getPos ()) }
 %%
 
 (* mosmlyac trailer *)
+\end{lstlisting}
