@@ -52,10 +52,17 @@ while f.ex. evaluation of boolean expressions will be saved for later.
 
 
 \section{Parser implementation in mosmlyac}
-
 Our main goal was to create the same language as the LL(1) parser. We started with the grammar, which was given with the 
 assignment. We then modified the grammar to conform with mosmlyacc, and also modified certain areas of the grammar that was
-giving conflicts(You can see the conflicts we had in the resolving parse conflicts section.).
+giving conflicts(You can see the conflicts we had in the resolving parse conflicts section.). 
+\\
+\\
+We also changed some of the given grammar that we thought could be better expressed with some new grammar, but still did that same thing as the given grammar(See the Changes to the paladim grammar section for that.).
+\\
+\\
+When we were done with the grammar we also had to make sure we used the correct return types, we used the AbSyn.sml file to check for the
+the datatype types to use, and we also looked in the LL(1) parser to see what types that parser used for better understanding of the 
+types.
 
 
 \section{Resolving parse conflicts}
@@ -69,18 +76,40 @@ i.e. by using the following mosmlyac declaration:
 \
 We had a shift/reduce conflict with the modified Decs grammar(which you can see in the changes to the paladin grammar section). The
 way we solved the problem was to force a reduce over a shift by making Tid and TSemi non associative, which fixed the conflict problem.
-
-
+\\
+\\
+We also received countless reduce conflicts from the rewritten operation expressions(See changes to paladim grammar section).
+This was because the parser did not know which reduction it should choose, e.g. 2+3*3, Plus(2, Times(3,3)) or Times(Plus(2, 3), 3). To fix
+this we introduced precedence and associativity for each operation and that fixed the problem. Please see the appendix for the precedence
+and associativity assignments for each operation in the parser.grm code.
 \section{Changes to the Paladim grammar}
+We removed the OP non terminal and instead created all the scenarios for the operations instead.
+\begin{lstlisting}
+	$Exp$  ->   $Exp$ $OP$ $Exp$ 
+	$Op$   ->  TPlus | TMinus | TTimes | TSlash 
+	$Op$   ->  TEq | TLess | TAnd | TOr
+\end{lstlisting}
+to
+\begin{lstlisting}
+  $Exp$  ->   $Exp$ TPlus  $Exp$
+	$Exp$  ->   $Exp$ TMinus $Exp$
+	$Exp$  ->   $Exp$ TTimes $Exp$
+	$Exp$  ->   $Exp$ TSlash $Exp$
+	$Exp$  ->   $Exp$ TEq    $Exp$
+	$Exp$  ->   $Exp$ TLess  $Exp$
+	$Exp$  ->   $Exp$ TAnd   $Exp$
+	$Exp$  ->   $Exp$ TOr    $Exp$ 
+\end{lstlisting}
+We decided to remove the left recursion because of a reduce/shift conflict.
 \begin{lstlisting}
   $Decs$  ->    $Decs$ $Dec$ ; 
   $Decs$  ->    $Dec$ ;
 \end{lstlisting}
+to
 \begin{lstlisting}
   $Decs$    ->   $Dec$ ; $Decs$
   $Decs$   ->    $Dec$ ;
 \end{lstlisting}
-
 \section{Testing methodology}
 At the current time in the spacetime-continuum we are only able to compile a subset
 of the programs included in the \textbf{DATA}-folder. Those programs are:\\
@@ -103,10 +132,15 @@ Whenever we had made some major changes to the parser, we would run all the afor
 in interpreter and compile mode to see if everything still works. Before we even started coding the grammar for the parser, we 
 saw how the LL(1) parser handled the aforementioned pal files, and since we are building a replacement for the LL(1) parser, our new
 parser should at least handle the same files and give the same output as the LL parser. It was therefore fairly easy to see if the parser
-tests were correct, regarding the pal files.
+tests were correct, regarding the pal files. Pal files like the fibWhile and fibRec were also quite easy to test, since they took some
+input and gave some output, which made it alot more easy to make test cases.
 
 
 \section{Conclusion}
+Using the knowledge of the LL(1) parser(given from the assignment) and that of yacc, we rewrote the grammar from the given grammar. Using our knowledge of LR parsers to handle shift/reduce conflicts, we used associativity to handle reduce/shift conflicts. By testing all 
+of our changes to the parser, we can be quite certain that it actually works as intended, and even though we didn't do really structured
+test cases, we did test quite a lot. I think in the later parts of the project a more structured testing approach would be better, but
+we felt that the tests were quite simple for the parser, and therefore testing of the already given pal files and our grammaTester script were enough.
 
 \begin{thebibliography}{9}
   \bibitem[ICD]{icd}
