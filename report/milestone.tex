@@ -81,8 +81,9 @@ specification (``GroupProject.pdf''), is rewritten in a \texttt{mosmlyac}
 specific way of specifying the grammar of the language, but besides from minor
 syntactical differences, they are largely identical.\\
 \\
-Our main goal was to create the same language as the LL(1) parser. We started
-with the grammar, which was given with the assignment. We then modified the
+Our main goal was to create the same language as the LL(1) parser, and then 
+connect the new parser to the rest the compiler(Changing the Driver.sml to use our parser instead). 
+We started with the grammar, which was given with the assignment. We then modified the
 grammar to conform with \texttt{mosmlyacc}, and also modified certain areas of
 the grammar that was giving conflicts (you can see the conflicts we had in the
 'Resolving parse conflicts' section).\\
@@ -201,5 +202,6 @@ the already given pal files and our grammarTester script were enough.
 \newpage
 \appendix
 \input{parser.tex}
+\input{grammarTester.tex}
 
 \end{document}
