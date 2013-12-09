@@ -7,16 +7,48 @@ function orTest (n : int) : bool
     return (n < 0 or 10 < n);
 
 function notTest(n : int) : bool
-    return (not (5 < n) = not (not 5 < n));
+    return (not (5 < n) = not (not (5 < n)));
 
 procedure main()
 var x : int;
     y : int;
     z : int;
+		result : bool;
 begin
    x := 2;
    y := 3;
    z := 12;
+
+	 result := andTest(x);
+	 write("andTest(x) ");
+	 write(result);
+	 write('\n');
+
+	 result := not andTest(12);
+	 write("not andtest(12) ");
+	 write(result);
+	 write('\n');
+
+	 result := orTest(z);
+	 write("orTest(z) ");
+	 write(result);
+	 write('\n');
+	 	
+	 result := orTest(y-z);
+	 write("orTest(y-z ");
+	 write(result);
+	 write('\n');
+
+	 result := notTest(2);
+	 write("notTest(2) ");
+	 write(result);
+	 write('\n');
+
+	 result := notTest(7);
+	 write("notTest(7) ");
+	 write(result);
+	 write('\n');
+
 
    if (andTest(x) and not andTest(12) and orTest(z) and
        orTest(y-z) and notTest(2) and notTest(7)) then

@@ -330,7 +330,7 @@ struct
     | toTpBValue (AbSyn.Chr c) = Chr c
     | toTpBValue (AbSyn.Log b) = Log b
 
-  (*  typeOfExp ( e : Exp   ) : Type *)
+ (*  typeOfExp ( e : Exp   ) : Type *)
   fun typeOfExp ( Literal(v,  _) ) = typeOfVal v
     | typeOfExp ( StrLit (_,  _) ) = Array(1,Char)
     | typeOfExp ( ArrLit (_,t,_) ) = t
