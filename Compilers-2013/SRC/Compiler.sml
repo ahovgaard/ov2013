@@ -202,12 +202,22 @@ struct
         end
 
     (* Task 2: Some code-generation of operators should occur here. *)
-(*
-    | compileExp( vtable, Times(e1, e2, pos), place ) =
-        raise Error ( "Task 2 not implemented yet in code generator ", pos )
-    | compileExp( vtable, Div(e1, e2, pos), place ) =
-        raise Error ( "Task 2 not implemented yet in code generator ", pos )
-*)
+
+    | compileExp( vtable, Times(e1, e2, _), place ) =
+        let val t1 = "times1_" ^ newName()
+            val c1 = compileExp(vtable, e1, t1)
+            val t2 = "times2_" ^ newName()
+            val c2 = compileExp(vtable, e2, t2)
+        in c1 @ c2 @ [Mips.MUL (place, t1, t2)]
+        end
+    | compileExp( vtable, Div(e1, e2, _), place ) =
+        let val t1 = "div1_" ^ newName()
+            val c1 = compileExp(vtable, e1, t1)
+            val t2 = "div2_" ^ newName()
+            val c2 = compileExp(vtable, e2, t2)
+        in c1 @ c2 @ [Mips.DIV (place, t1, t2)]
+        end
+
 
     | compileExp( vtable, Equal(e1, e2, _), place ) =
         let val t1 = "eq1_" ^ newName()
@@ -241,12 +251,26 @@ struct
         end
 
     (* Task 2: Some code-generation of operators should occur here. *)
-(*
-    | compileExp( vtable, Or(e1, e2, pos), place ) =
-        raise Error ( "Task 2 not implemented yet in code generator ", pos )
-    | compileExp( vtable, Not(e1, pos), place ) =
-        raise Error ( "Task 2 not implemented yet in code generator ", pos )
-*)
+
+    | compileExp( vtable, Or(e1, e2, _), place ) =
+        let val t1 = "or1_" ^ newName()
+            val c1 = compileExp(vtable, e1, t1)
+            val t2 = "or2_" ^ newName()
+            val c2 = compileExp(vtable, e2, t2)
+            val label = "_or_" ^ newName() 
+        in c1 (* if t1 is true than we just skip t2 values, but if t1 is false we take t2 value as the deciding factor *)
+           @ [Mips.MOVE (place, t1), Mips.BNE (place, "0", label)]
+           @ c2
+           @ [Mips.MOVE (place, t2), Mips.LABEL label]
+        end
+
+
+
+    | compileExp( vtable, Not(e1, _), place ) =
+        let val t1 = "and1_" ^ newName()
+            val c1 = compileExp(vtable, e1, t1)
+        in c1 @ [Mips.MOVE(place, t1), Mips.XORI(place, t1, "1")]
+        end
 
     | compileExp( vtab, FunApp (("len",(_,_)),args,pos), place ) =
        ( case args of

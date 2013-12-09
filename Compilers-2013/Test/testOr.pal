@@ -1,0 +1,83 @@
+program testMult;
+
+
+procedure main()
+var result     : bool;
+    a          : bool;
+		b          : bool;
+
+begin 
+		a := true;	
+		b := false;
+
+		write("a = ");
+		write(a);
+
+		write('\n');
+		
+		write("b = ");
+		write(b);
+
+		write('\n');
+
+		result := a or b;
+		write("a or b = ");
+		write(result);
+
+		write('\n');
+
+		a := false;
+		b := true;
+
+		write("a = ");
+		write(a);
+
+		write('\n');
+		
+		write("b = ");
+		write(b);
+
+		write('\n');
+
+		result := a or b;
+		write("a or b = ");
+		write(result);
+
+		write('\n');
+
+		a := true;
+		b := true;
+
+		write("a = ");
+		write(a);
+
+		write('\n');
+		
+		write("b = ");
+		write(b);
+
+		write('\n');
+
+		result := a or b;
+		write("a or b = ");
+		write(result);
+
+		write('\n');
+
+		a := false;
+		b := false;
+
+		write("a = ");
+		write(a);
+
+		write('\n');
+		
+		write("b = ");
+		write(b);
+
+		write('\n');
+
+		result := a or b;
+		write("a or b = ");
+		write(result);
+end;

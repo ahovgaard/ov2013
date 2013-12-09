@@ -1,0 +1,26 @@
+program testMult;
+
+
+procedure main()
+var result     : int;
+    a          : int;
+		b          : int;
+		ret        : bool;
+begin 
+		a := 5;
+		b := 10;
+		result := 10 / 5;
+
+
+		write("Oh, mighty compiler, please answer me this. What is 10 / 5? ");
+	  write(result);
+
+		a := 100;
+		b := 10;
+		result := 100 / 10;
+		
+		write('\n');
+		write("What is 100 / 10? ");
+		write(result);
+
+end;
