@@ -1,0 +1,10 @@
+program test;
+
+
+procedure main()
+var a : array of array of array of int;
+    b : int;
+begin 
+		b := 2;
+		a := new(0, 4, 5);
+end;
