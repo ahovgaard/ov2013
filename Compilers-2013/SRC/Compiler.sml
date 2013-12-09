@@ -267,7 +267,7 @@ struct
 
 
     | compileExp( vtable, Not(e1, _), place ) =
-        let val t1 = "and1_" ^ newName()
+        let val t1 = "not1_" ^ newName()
             val c1 = compileExp(vtable, e1, t1)
         in c1 @ [Mips.MOVE(place, t1), Mips.XORI(place, t1, "1")]
         end
