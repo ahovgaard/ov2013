@@ -8,7 +8,7 @@ var result     : int;
 		c          : char;
 
 begin 
-		write("testing read() = read()");
+		write("testing read() + read()");
 		write('\n');
 
 		result := read() + read();
