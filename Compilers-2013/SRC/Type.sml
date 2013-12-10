@@ -316,11 +316,14 @@ struct
     | typeCheckExp ( vtab, AbSyn.FunApp ("new", args, pos), etp as KnownType(tp)) =
         ( case expectedBasicType etp of
             SOME btp => let
-                        val new_args = map (fn arg => typeCheckExp(vtab, arg, KnownType(BType Int))) args
-                        val arg_tps = map (fn arg => typeOfExp arg) new_args
-                        val isInts = foldl (fn (x, y) => typesEqual(BType Int, x) andalso y) true arg_tps 
+                          val new_args = map (fn arg => typeCheckExp(vtab, arg, KnownType(BType Int))) args
+                          val arg_tps = map (fn arg => typeOfExp arg) new_args
+                          val isInts = foldl (fn (x, y) => typesEqual(BType Int, x) andalso y) true arg_tps 
+                          val amount = List.length new_args
                         in
-                          if isInts = true then FunApp(("new", (arg_tps, SOME tp)), new_args, pos)
+                          if isInts = true then 
+                            if amount > 0 then FunApp(("new", (arg_tps, SOME tp)), new_args, pos)
+                            else raise Error("rank of new must be over 0", pos)
                           else raise Error("All the types in arg must be ints!", pos)
                         end
                         (*************************************************************)
