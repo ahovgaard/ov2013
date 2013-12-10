@@ -157,6 +157,21 @@ struct
         )
 
     | typeCheckExp( vtab, AbSyn.LValue( AbSyn.Index(id, inds), pos ), _ ) =
+        let 
+          val new_inds = map (fn ind => typeCheckExp(vtab, ind, KnownType(BType Int))) inds
+          val ind_tps = map (fn ind => typeOfExp ind) new_inds
+          val indAmount = List.length ind_tps
+          val areInts = foldl (fn (x, y) => typesEqual(BType Int, x) andalso y) true ind_tps
+          val id_tp = List.find (fn (look, Array(_,_)) => if id = look then true else false
+                                   | (_, _) => false) vtab
+        in
+          case id_tp of 
+            NONE => raise Error("The array does not exist in the vtab.", pos)
+          | SOME (_, Array(rank, _) ) => if rank > 0 andalso rank = indAmount 
+                                         then LValue(Index((id, (#2 (valOf id_tp))), new_inds), pos)
+                                         else raise Error("array " ^ id ^ " does not have the right rank.", pos)
+          | _ => raise Error("come up with a good warning massage - array indexing", pos)
+        end
         (*************************************************************)
         (*** TO DO: IMPLEMENT for G-ASSIGNMENT, TASK 4             ***)
         (*** Suggested implementation STEPS:                       ***)
@@ -172,7 +187,6 @@ struct
         (***         LValue( Index ((id, id_tp), new_inds), pos )  ***)
         (***       where `new_inds' are the typed version of `inds'***)
         (*************************************************************)
-        raise Error( "in type check, indexed expression UNIMPLEMENTED, at ", pos)
 
       (* Must be modified to complete task 3 *)
     | typeCheckExp( vtab, AbSyn.Plus (e1, e2, pos), _ ) =
@@ -318,9 +332,9 @@ struct
             SOME btp => let
                         val new_args = map (fn arg => typeCheckExp(vtab, arg, KnownType(BType Int))) args
                         val arg_tps = map (fn arg => typeOfExp arg) new_args
-                        val isInts = foldl (fn (x, y) => typesEqual(BType Int, x) andalso y) true arg_tps 
+                        val areInts = foldl (fn (x, y) => typesEqual(BType Int, x) andalso y) true arg_tps 
                         in
-                          if isInts = true then FunApp(("new", (arg_tps, SOME tp)), new_args, pos)
+                          if areInts = true then FunApp(("new", (arg_tps, SOME tp)), new_args, pos)
                           else raise Error("All the types in arg must be ints!", pos)
                         end
                         (*************************************************************)
