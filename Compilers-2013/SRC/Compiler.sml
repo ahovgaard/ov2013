@@ -445,7 +445,80 @@ struct
     | compileLVal( vtab : VTab, Index ((n,_),  []) : LVAL, pos : Pos ) =
         raise Error("variable "^"n"^" with empty index, at ", pos)
 
-    | compileLVal( vtab : VTab, Index ((n,t),inds) : LVAL, pos : Pos ) =
+    | compileLVal( vtab : VTab, Index ((n, Array(rank, _)),inds) : LVAL, pos : Pos ) =
+        let 
+          val mem = valOf (SymTab.lookup n vtab)
+          val strideEnd = (rank * 2)-1
+          val ptr = ((rank * 2) - 1)*4
+          fun dims base i  = 
+            let
+              val r = "metaDataDims_"^newName()
+              val code = Mips.LW(r, base, Int.toString (i*4))
+            in
+              if i < rank then
+                [(code, r)] @ (dims base (i+1))
+              else
+                []
+            end
+          fun stride base i =
+            let
+              val r = "metaDataStride_"^newName() 
+              val code = Mips.LW(r, base, Int.toString (i*4))
+            in
+              if i < strideEnd then
+                [(code, r)] @ (stride base (i+1))
+              else
+                []
+            end
+
+          val t = "metaPointer_"^newName()
+          val c1 = Mips.LW(t, mem, Int.toString(ptr))
+          val strideMeta = stride mem rank          
+          val dimsMeta = dims mem 0 
+
+          (* added the wild cards to stop the pattern match complaint, but the length of exps = length of dmeta *)
+          fun checkBounds _ [] = []
+            | checkBounds [] _ = []
+            | checkBounds ((c, r)::dmeta) (exp::exps) =
+            let
+              val tIndex = "bounds_"^newName()
+              val tb = "bounds_"^newName()
+              val cIndex = compileExp(vtab, exp, tIndex)
+              val label = "passed_bound_"^newName()
+              val codeLhs = [Mips.BGEZ(tIndex, label), Mips.J "_IllegalArrIndexError_",  Mips.LABEL(label) ]
+              val codeRhs = [Mips.SLT(tb, tIndex, r), Mips.BEQ(tb, "0", "_IllegalArrIndexError_")]
+            in
+              cIndex @ [c] @ codeRhs @ codeLhs @ (checkBounds dmeta exps) 
+            end
+
+          fun computeIndexAddress [] (exp::[]) place =
+            let
+              val tIndex = "index_"^newName()
+              val cIndex = compileExp(vtab, exp, tIndex)
+              val code = cIndex @ [Mips.ADD(place, tIndex, place)] 
+            in
+              code
+            end
+
+            | computeIndexAddress ((c, r)::smeta) (exp::exps) place =
+            let
+              val tIndex = "index_"^newName()
+              val cIndex = compileExp(vtab, exp, tIndex)
+              val tTemp = "index_"^newName()
+              val code = cIndex @ [c] @ [Mips.MUL(tTemp, tIndex, r), Mips.ADD(place, tTemp, place)] 
+            in
+              code @ computeIndexAddress smeta exps place
+            end
+            | computeIndexAddress _ _ _ = raise Error("this cannot happen", pos)
+          
+          val tResult = "index_"^newName()
+          val result = (checkBounds dimsMeta inds) @ (computeIndexAddress strideMeta inds tResult) 
+                        @ [c1] @ [Mips.SLL(tResult, tResult, "2"), Mips.ADD(t, t, tResult)] 
+
+        in
+          (result, Mem (t)) 
+        end
+    | compileLVal (vtab : VTab, Index ((n, BType a),inds) : LVAL, pos : Pos) = raise Error("LVAL index must use array", pos)
         (*************************************************************)
         (*** TODO: IMPLEMENT for G-ASSIGNMENT, TASK 4              ***)
         (*** Sugested implementation STEPS:                        ***)
@@ -469,9 +542,6 @@ struct
         (***     Bonus question: can you implement it without      ***)
         (***                        using the stored strides?      ***)
         (*************************************************************)
-        raise Error( "indexed variables UNIMPLEMENTED, at ", pos)
-
-
   (* instr.s for one statement. exitLabel is end (for control flow jumps) *)
   and compileStmt( vtab, ProcCall (("write",_), [e], pos), _ ) =
         let val place    = "_dat_"^newName()
