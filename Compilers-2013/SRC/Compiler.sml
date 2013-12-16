@@ -471,48 +471,49 @@ struct
                 []
             end
 
+          fun calculateIndices [] = []
+            | calculateIndices (exp::exps) =
+            let 
+              val temp = "indices_"^newName()
+              val code = compileExp(vtab, exp, temp)
+            in
+              [(code, temp)] @ calculateIndices exps
+            end
+
           val t = "metaPointer_"^newName()
           val c1 = Mips.LW(t, mem, Int.toString(ptr))
           val strideMeta = stride mem rank          
           val dimsMeta = dims mem 0 
+          val compiledInds = calculateIndices inds
 
           (* added the wild cards to stop the pattern match complaint, but the length of exps = length of dmeta *)
           fun checkBounds _ [] = []
             | checkBounds [] _ = []
-            | checkBounds ((c, r)::dmeta) (exp::exps) =
+            | checkBounds ((c, r)::dmeta) ((c2, r2)::exps) =
             let
-              val tIndex = "bounds_"^newName()
               val tb = "bounds_"^newName()
-              val cIndex = compileExp(vtab, exp, tIndex)
               val label = "passed_bound_"^newName()
-              val codeLhs = [Mips.BGEZ(tIndex, label), Mips.J "_IllegalArrIndexError_",  Mips.LABEL(label) ]
-              val codeRhs = [Mips.SLT(tb, tIndex, r), Mips.BEQ(tb, "0", "_IllegalArrIndexError_")]
+              val code = [Mips.ADDI (tb, r2, "1"), Mips.SUB(tb, r, tb), Mips.SLTI(tb, tb, "0"),
+                          Mips.BNE(tb, "zero", "_IllegalArrIndexError_") ]
+              (*val codeLhs = [Mips.BGEZ(tIndex, label), Mips.J "_IllegalArrIndexError_",  Mips.LABEL(label) ]
+              val codeRhs = [Mips.SLT(tb, tIndex, r), Mips.BEQ(tb, "0", "_IllegalArrIndexError_")]*)
             in
-              cIndex @ [c] @ codeRhs @ codeLhs @ (checkBounds dmeta exps) 
+              (*cIndex @ [c] @ codeRhs @ codeLhs @ (checkBounds dmeta exps)*) 
+              c2 @ [c] @ code @ (checkBounds dmeta exps)
             end
 
-          fun computeIndexAddress [] (exp::[]) place =
+          fun computeIndexAddress [] ((c,r)::[]) place = c @ [Mips.ADD(place, r, place)] 
+            | computeIndexAddress ((c, r)::smeta) ((c2, r2)::exps) place =
             let
-              val tIndex = "index_"^newName()
-              val cIndex = compileExp(vtab, exp, tIndex)
-              val code = cIndex @ [Mips.ADD(place, tIndex, place)] 
-            in
-              code
-            end
-
-            | computeIndexAddress ((c, r)::smeta) (exp::exps) place =
-            let
-              val tIndex = "index_"^newName()
-              val cIndex = compileExp(vtab, exp, tIndex)
               val tTemp = "index_"^newName()
-              val code = cIndex @ [c] @ [Mips.MUL(tTemp, tIndex, r), Mips.ADD(place, tTemp, place)] 
+              val code = c2 @ [c] @ [Mips.MUL(tTemp, r2, r), Mips.ADD(place, tTemp, place)] 
             in
               code @ computeIndexAddress smeta exps place
             end
             | computeIndexAddress _ _ _ = raise Error("this cannot happen", pos)
           
           val tResult = "index_"^newName()
-          val result = (checkBounds dimsMeta inds) @ (computeIndexAddress strideMeta inds tResult) 
+          val result = (checkBounds dimsMeta compiledInds) @ (computeIndexAddress strideMeta compiledInds tResult) 
                         @ [c1] @ [Mips.SLL(tResult, tResult, "2"), Mips.ADD(t, t, tResult)] 
 
         in
