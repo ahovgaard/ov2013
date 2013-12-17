@@ -436,7 +436,6 @@ struct
 (** TASK 5: You may want to create a function slightly similar to putArgs,
  *  but instead moving args back to registers. **)
 
-
   and compileLVal( vtab : VTab, Var (n,_) : LVAL, pos : Pos ) : Mips.mips list * Location =
         ( case SymTab.lookup n vtab of
             SOME reg => ([], Reg reg)
