@@ -406,7 +406,7 @@ struct
         end
 
     | compileExp( vtable, FunApp ((f,_),es,_), place ) =
-        let val (mvcode,maxreg) = putArgs es vtable minReg
+        let val (mvcode,maxreg, _) = putArgs es vtable minReg
             val regs = List.tabulate ( maxreg - minReg,
                                        makeConst o (fn x => x + minReg) )
 
@@ -421,17 +421,18 @@ struct
 
   (* move args to callee registers *)
   and putArgs [] vtable reg =
-        ([], reg)
+        ([], reg, [])
     | putArgs (e::es) vtable reg =
       let
           val t1 = "_funarg_"^newName()
           val code1 = compileExp(vtable, e, t1)
-          val (code2, maxreg) = putArgs es vtable (reg+1)
+          val (code2, maxreg, epi) = putArgs es vtable (reg+1)
       in
           (   code1                          (* compute arg1 *)
             @ code2                          (* compute rest *)
             @ [Mips.MOVE (makeConst reg,t1)] (* store in reg *)
-            , maxreg)
+            , maxreg
+            , epi @ [Mips.MOVE (t1, makeConst reg)])
       end
 (** TASK 5: You may want to create a function slightly similar to putArgs,
  *  but instead moving args back to registers. **)
@@ -603,9 +604,9 @@ struct
          * the procedure. **)
         | ProcCall ((n,_), es, p) => 
           let
-              val (mvcode, maxreg) = putArgs es vtable minReg
+              val (mvcode, maxreg, epi) = putArgs es vtable minReg
           in
-              mvcode @ [Mips.JAL (n, List.tabulate (maxreg, fn reg => makeConst reg))]
+              mvcode @ [Mips.JAL (n, List.tabulate (maxreg, fn reg => makeConst reg))] @ epi
           end
         | Assign (lv, e, p) =>
           let val (codeL,loc) = compileLVal(vtable, lv, p)
@@ -689,13 +690,16 @@ struct
                                      ^")", pos)
           val (movePairs, vtable) = getMovePairs args [] minReg
           val argcode = map (fn (vname, reg) => Mips.MOVE (vname, reg)) movePairs
+          val rargcode = if isProc
+                         then map (fn (vname, reg) => Mips.MOVE (reg, vname)) movePairs
+                         else []
           (** TASK 5: You need to add code to move variables back into callee registers,
            * i.e. something similar to 'argcode', just the other way round.  Use the
            * value of 'isProc' to determine whether you are dealing with a function
            * or a procedure. **)
           val body = compileStmts block vtable (fname ^ "_exit")
           val (body1, _, maxr, spilled) =  (* call register allocator *)
-              RegAlloc.registerAlloc ( argcode @ body )
+              RegAlloc.registerAlloc ( argcode @ body @ [Mips.LABEL (fname^"_exit")] @ rargcode)
                                      ["2"] minReg maxCaller maxReg 0
                                      (* 2 contains return val*)
           val (savecode, restorecode, offset) = (* save/restore callee-saves *)
@@ -706,7 +710,7 @@ struct
              Mips.ADDI (SP,SP,makeConst (~4-offset))] (* move SP "up" *)
           @ savecode                 (* save callee-saves registers *)
           @ body1                    (* code for function body *)
-          @ [Mips.LABEL (fname^"_exit")] (* exit label *)
+         (* @ [Mips.LABEL (fname^"_exit")] (* exit label *)*)
           @ restorecode              (* restore callee-saves registers *)
           @ [Mips.ADDI (SP,SP,makeConst (4+offset))] (* move SP "down" *)
           @ [Mips.LW (RA, SP, "-4"),  (* restore return addr *)
