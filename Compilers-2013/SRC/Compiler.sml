@@ -445,7 +445,7 @@ struct
     | compileLVal( vtab : VTab, Index ((n,_),  []) : LVAL, pos : Pos ) =
         raise Error("variable "^"n"^" with empty index, at ", pos)
 
-    | compileLVal( vtab : VTab, Index ((n, Array(rank, _)),inds) : LVAL, pos : Pos ) =
+    | compileLVal( vtab : VTab, Index ((n, Array(rank, tp)),inds) : LVAL, pos : Pos ) =
         let 
           val mem = valOf (SymTab.lookup n vtab)
           val strideEnd = (rank * 2)-1
@@ -494,7 +494,7 @@ struct
               val tb = "bounds_"^newName()
               val label = "passed_bound_"^newName()
               val code = [Mips.ADDI (tb, r2, "1"), Mips.SUB(tb, r, tb), Mips.SLTI(tb, tb, "0"),
-                          Mips.BNE(tb, "zero", "_IllegalArrIndexError_") ]
+                          Mips.BNE(tb, "0", "_IllegalArrIndexError_") ]
               (*val codeLhs = [Mips.BGEZ(tIndex, label), Mips.J "_IllegalArrIndexError_",  Mips.LABEL(label) ]
               val codeRhs = [Mips.SLT(tb, tIndex, r), Mips.BEQ(tb, "0", "_IllegalArrIndexError_")]*)
             in
@@ -513,8 +513,14 @@ struct
             | computeIndexAddress _ _ _ = raise Error("this cannot happen", pos)
           
           val tResult = "index_"^newName()
+          val multValue = (case tp of
+                            Int => 4
+                          | Char => 1
+                          | Bool => 1)
+                          
+          val tMult = "multIndex_"^newName()
           val result = (checkBounds dimsMeta compiledInds) @ (computeIndexAddress strideMeta compiledInds tResult) 
-                        @ [c1] @ [Mips.SLL(tResult, tResult, "2"), Mips.ADD(t, t, tResult)] 
+                        @ [c1] @ [Mips.ADDI(tMult, "0", makeConst multValue),Mips.MUL(tResult, tResult, tMult), Mips.ADD(t, t, tResult)] 
 
         in
           (result, Mem (t)) 

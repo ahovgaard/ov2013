@@ -303,7 +303,19 @@ and callFun ( (rtp : Type option, fid : string, fargs : Dec list, body : StmtBlo
             let val new_vtab = bindTypeIds(fargs, aargs, fid, pdcl, pcall)
                 val res  = execBlock( body, new_vtab, ftab )
             in  ( case (rtp, res) of
-                    (NONE  , _     ) => NONE (* Procedure, hence modify this code for TASK 5. *) 
+                    (NONE  , _) => 
+                    let 
+                      (*updates the vtable for each expression*)
+                      fun updateAll ([], []) = () 
+                        | updateAll (exp::exps, in_arg::in_args) = 
+                            let
+                              val a = updateOuterVtable vtab new_vtab (exp, in_arg); 
+                            in 
+                              updateAll(exps, in_args) 
+                            end
+                    in
+                      updateAll (aexps, fargs); NONE
+                    end
 
                   | (SOME t, SOME r) => if   typesEqual(t, typeOfVal r) 
                                         then SOME r
@@ -320,8 +332,25 @@ and callFun ( (rtp : Type option, fid : string, fargs : Dec list, body : StmtBlo
  * result requires that argument expressions are variable names, i.e. expressions like
  * '2 + x' do not work, since '2 * x' is not an LValue variable name.
  *)
-and updateOuterVtable vtabOuter vtabInner (out_exp, in_arg) = ()
-(* Implement this function to complete TASK 5 in the interpreter. *)
+and updateOuterVtable vtabOuter vtabInner (LValue out_exp, Dec((s, t), pos)) = 
+  let
+    fun getIdent (Var((s, t)), _) = s
+      | getIdent (Index((s, t), _), _) = s
+    
+    fun getPos (Var((s, t)), pos) = pos
+      | getPos (Index((s, t), _), pos) = pos
+
+    val ident = getIdent out_exp
+    val finalValue  = SymTab.lookup s vtabInner
+    val modifyValue = SymTab.lookup ident vtabOuter
+  in
+    case (modifyValue, finalValue) of
+      (NONE, NONE) => raise Error("Could not find the final value for call by value result, " ^ s, getPos(out_exp))
+    | (SOME m, SOME f)  => (m := !f; ())
+    | (_, _) => raise Error("Could not find the final value for call by value result, " ^ s, getPos(out_exp))
+  end
+
+  | updateOuterVtable _ _ (out_exp, _)  = raise Error("call by value result requires that arguments are LVAL", posOfExp(out_exp)) 
 
 
 and mkNewArr( btp : BasicType, shpval : Value list, pos : Pos ) : Value =
