@@ -456,7 +456,9 @@ struct
 
     | compileLVal( vtab : VTab, Index ((n, Array(rank, tp)),inds) : LVAL, pos : Pos ) =
         let 
-          val mem = valOf (SymTab.lookup n vtab)
+          val mem = case SymTab.lookup n vtab of 
+                      SOME n => n
+                    | NONE => raise Error("no such variable for array, " ^ n, pos)
           val strideEnd = (rank * 2)-1
           val ptr = ((rank * 2) - 1)*4
           fun dims base i  = 
@@ -495,7 +497,6 @@ struct
           val dimsMeta = dims mem 0 
           val compiledInds = calculateIndices inds
 
-          (* added the wild cards to stop the pattern match complaint, but the length of exps = length of dmeta *)
           fun checkBounds _ [] = []
             | checkBounds [] _ = []
             | checkBounds ((c, r)::dmeta) ((c2, r2)::exps) =
