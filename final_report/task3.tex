@@ -64,14 +64,12 @@ only one line of change is necessary:
 +    | typeCheckExp ( vtab, AbSyn.Not (e1, pos), _ ) =
 +        let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
 \end{verbatim}
-\\
 On the next line etp is explicitly given a type
 \begin{verbatim}
 -    | typeCheckExp ( vtab, AbSyn.FunApp ("new", args, pos), etp ) =
 
 +    | typeCheckExp ( vtab, AbSyn.FunApp ("new", args, pos), etp as KnownType(tp)) =
 \end{verbatim}
-\\
 Implementation 
 \begin{verbatim}
 -            SOME btp => raise Error("in type check new UNIMPLEMENTED, i.e., G-ASSIGNMENT task 3, at ", pos)
@@ -94,7 +92,7 @@ The test here shows it quite good. The type on the righthand side is unknown,
 but since chr() is on the left hand side the final type is char.
 
 
-\begin{lstlisting}[style=MLStyle]
+\begin{verbatim}
 program test_task3;
 
 procedure main()
@@ -108,4 +106,4 @@ begin
   //a := read() = chr(read());
 
 end;
-\end{lstlisting}
+\end{verbatim}
