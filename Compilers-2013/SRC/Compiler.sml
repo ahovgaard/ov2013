@@ -491,46 +491,51 @@ struct
               [(code, temp)] @ calculateIndices exps
             end
 
-          val t = "metaPointer_"^newName()
-          val c1 = Mips.LW(t, mem, Int.toString(ptr))
+          val arrayAddress = "metaPointer_"^newName()
+          val addressCode = [Mips.ADDI(arrayAddress, mem, makeConst ptr)]
           val strideMeta = stride mem rank          
           val dimsMeta = dims mem 0 
           val compiledInds = calculateIndices inds
 
           fun checkBounds _ [] = []
             | checkBounds [] _ = []
-            | checkBounds ((c, r)::dmeta) ((c2, r2)::exps) =
+            | checkBounds ((c, r)::dmeta) ((_, r2)::exps) =
             let
               val tb = "bounds_"^newName()
               val label = "passed_bound_"^newName()
               val code = [Mips.ADDI (tb, r2, "1"), Mips.SUB(tb, r, tb), Mips.SLTI(tb, tb, "0"),
                           Mips.BNE(tb, "0", "_IllegalArrIndexError_") ]
             in
-              c2 @ [c] @ code @ (checkBounds dmeta exps)
+              [c] @ code @ (checkBounds dmeta exps)
             end
 
           fun computeIndexAddress [] ((c,r)::[]) place = c @ [Mips.ADD(place, r, place)] 
-            | computeIndexAddress ((c, r)::smeta) ((c2, r2)::exps) place =
+            | computeIndexAddress ((c, r)::smeta) ((_, r2)::exps) place =
             let
               val tTemp = "index_"^newName()
-              val code = c2 @ [c] @ [Mips.MUL(tTemp, r2, r), Mips.ADD(place, tTemp, place)] 
+              val code = [c, Mips.MUL(tTemp, r2, r), Mips.ADD(place, tTemp, place)] 
             in
               code @ computeIndexAddress smeta exps place
             end
             | computeIndexAddress _ _ _ = raise Error("this cannot happen", pos)
-          
-          val tResult = "index_"^newName()
+
           val multValue = (case tp of
                             Int => 4
                           | Char => 1
                           | Bool => 1)
                           
           val tMult = "multIndex_"^newName()
-          val result = (checkBounds dimsMeta compiledInds) @ (computeIndexAddress strideMeta compiledInds tResult) 
-                        @ [c1] @ [Mips.ADDI(tMult, "0", makeConst multValue),Mips.MUL(tResult, tResult, tMult), Mips.ADD(t, t, tResult)] 
+          val tResult = "index_"^newName()
+          val init = [Mips.LI(tResult, "0")]
+          val checkCode = checkBounds dimsMeta compiledInds 
+          val indexCode = computeIndexAddress strideMeta compiledInds tResult 
+          val computeFinalAddress = [Mips.ADDI(tMult, "0", makeConst multValue),Mips.MUL(tResult, tResult, tMult), Mips.ADD(arrayAddress, arrayAddress, tResult)] 
+
+          val indCode = foldl op @ [] (map (fn (x,y) => x) compiledInds)
+          val result = addressCode @ indCode @ checkCode @ init @ indexCode @ computeFinalAddress 
 
         in
-          (result, Mem (t)) 
+          (result, Mem (arrayAddress)) 
         end
     | compileLVal (vtab : VTab, Index ((n, BType a),inds) : LVAL, pos : Pos) = raise Error("LVAL index must use array", pos)
         (*************************************************************)
