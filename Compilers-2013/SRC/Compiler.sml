@@ -505,10 +505,7 @@ struct
               val label = "passed_bound_"^newName()
               val code = [Mips.ADDI (tb, r2, "1"), Mips.SUB(tb, r, tb), Mips.SLTI(tb, tb, "0"),
                           Mips.BNE(tb, "0", "_IllegalArrIndexError_") ]
-              (*val codeLhs = [Mips.BGEZ(tIndex, label), Mips.J "_IllegalArrIndexError_",  Mips.LABEL(label) ]
-              val codeRhs = [Mips.SLT(tb, tIndex, r), Mips.BEQ(tb, "0", "_IllegalArrIndexError_")]*)
             in
-              (*cIndex @ [c] @ codeRhs @ codeLhs @ (checkBounds dmeta exps)*) 
               c2 @ [c] @ code @ (checkBounds dmeta exps)
             end
 
