@@ -460,7 +460,7 @@ struct
                       SOME n => n
                     | NONE => raise Error("no such variable for array, " ^ n, pos)
           val strideEnd = (rank * 2)-1
-          val ptr = ((rank * 2) - 1)*4
+          val ptr = rank * 2 *4
           fun dims base i  = 
             let
               val r = "metaDataDims_"^newName()
