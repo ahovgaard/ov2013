@@ -698,7 +698,8 @@ struct
            * or a procedure. **)
           val body = compileStmts block vtable (fname ^ "_exit")
           val (body1, _, maxr, spilled) =  (* call register allocator *)
-              RegAlloc.registerAlloc ( argcode @ body @ [Mips.LABEL (fname^"_exit")] @ rargcode)
+              RegAlloc.registerAlloc ( argcode @ body @ rargcode @ [Mips.LABEL
+(fname^"_exit")])
                                      ["2"] minReg maxCaller maxReg 0
                                      (* 2 contains return val*)
           val (savecode, restorecode, offset) = (* save/restore callee-saves *)
