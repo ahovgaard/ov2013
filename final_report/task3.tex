@@ -1,0 +1,26 @@
+\section{Task 3}
+
+\subsection{Testing}
+In this section we'll be testing type inference. The current codebase only
+allows for type inference to work from left to right. Ie. if the code on both
+sides of a equality expression is unknown, it's the left hand side, that's the
+victor and thus trumphs its type over to the right hand side.\\
+The test here shows it quite good. The type on the righthand side is unknown,
+but since chr() is on the left hand side the final type is char.
+
+
+\begin{lstlisting}[style=MLStyle]
+program test_task3;
+
+procedure main()
+var a : bool;
+begin
+  a := chr(read()) = read();
+  write(a);write("\n");
+
+  // The following is commented out since it would give an error as expected
+  // since type inference only works from left to right.
+  //a := read() = chr(read());
+
+end;
+\end{lstlisting}
