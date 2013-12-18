@@ -426,13 +426,21 @@ struct
       let
           val t1 = "_funarg_"^newName()
           val code1 = compileExp(vtable, e, t1)
+          val str = case e of
+                      LValue ( Var( n, _), _ ) => n
+                    | LValue ( (Index((n, _),_)), _)=> n
+                    | _ => raise Error("Argument in procedure must be a LValue", (0,0))
+          val t = case SymTab.lookup str vtable of
+                    SOME t => t
+                  | NONE => raise Error("Variable is not found in vtable: " ^ str, (0,0))           
+
           val (code2, maxreg, epi) = putArgs es vtable (reg+1)
       in
           (   code1                          (* compute arg1 *)
             @ code2                          (* compute rest *)
             @ [Mips.MOVE (makeConst reg,t1)] (* store in reg *)
             , maxreg
-            , epi @ [Mips.MOVE (t1, makeConst reg)])
+            , epi @ [Mips.MOVE (t, makeConst reg)])
       end
 (** TASK 5: You may want to create a function slightly similar to putArgs,
  *  but instead moving args back to registers. **)
