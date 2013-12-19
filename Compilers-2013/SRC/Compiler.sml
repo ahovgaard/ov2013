@@ -420,19 +420,27 @@ struct
 
 
   (* move args to callee registers *)
-  and putArgs [] vtable reg =
-        ([], reg, [])
+  and putArgs [] vtable reg = ([], reg, [])
     | putArgs (e::es) vtable reg =
       let
           val t1 = "_funarg_"^newName()
           val code1 = compileExp(vtable, e, t1)
-          val str = case e of
-                      LValue ( Var( n, _), _ ) => n
-                    | LValue ( (Index((n, _),_)), _)=> n
-                    | _ => raise Error("Argument in procedure must be a LValue", (0,0))
-          val t = case SymTab.lookup str vtable of
-                    SOME t => t
-                  | NONE => raise Error("Variable is not found in vtable: " ^ str, (0,0))           
+
+          val lvalIdentOption =
+            case e of LValue (Var (n, _), _)          => SOME n
+                    | LValue ((Index ((n, _), _)), _) => SOME n
+                    | _                               => NONE
+
+          fun lvalIdentLookup n =
+            case SymTab.lookup n vtable of
+                 SOME t => t
+               | NONE   => raise Error ("Variable is not found in vtable: "
+                                        ^ n, (0,0))
+
+          val moveBack =
+            case lvalIdentOption of
+                 SOME n => [Mips.MOVE (lvalIdentLookup n, makeConst reg)]
+               | NONE   => []
 
           val (code2, maxreg, epi) = putArgs es vtable (reg+1)
       in
@@ -440,8 +448,9 @@ struct
             @ code2                          (* compute rest *)
             @ [Mips.MOVE (makeConst reg,t1)] (* store in reg *)
             , maxreg
-            , epi @ [Mips.MOVE (t, makeConst reg)])
+            , epi @ moveBack)                (* copy back from regs to args *)
       end
+
 (** TASK 5: You may want to create a function slightly similar to putArgs,
  *  but instead moving args back to registers. **)
 

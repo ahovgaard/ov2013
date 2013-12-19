@@ -1,8 +1,9 @@
 \section{Task 5}
 The fifth task was to implement call-by-value-result semantics for procedures,
 which means that procedures work on a local copy of its arguments, but copy the
-values of these back into the given arguments when it returns.\\
-\\
+values of these back into the given arguments when it returns.
+
+\subsection{Interpreter}
 This parameter passing strategy is implemented in both the \textsf{Paladim}
 interpreter and in the \textsc{Mips} code generator. In the interpreter module,
 \verb|TpInterpret.sml|, the \verb|callFun| function was updated in the case when
@@ -82,7 +83,14 @@ and updateOuterVtable vtabOuter vtabInner (LValue out_exp, Dec((s, t), pos)) =
   \label{fig_updateOuterVtable}
 \end{figure}
 
-\noindent
-To make the call-by-value-result strategy work in code generation
+\subsection{\textsc{Mips} code generation}
+To make the call-by-value-result strategy work in code generation, a few changes
+were made a few places in the \verb|Compiler.sml| file. The \verb|putArgs|
+function, recursively compiling expressions given as arguments to a procedure
+and generating \textsc{Mips} \verb|MOVE| instruction for moving arguments into
+registers for the procedure to work on, was modified to also generate and return
+a procedure stack frame prologue.
+
+
 
 \subsection{Testing}
