@@ -162,15 +162,20 @@ struct
           val ind_tps = map (fn ind => typeOfExp ind) new_inds
           val indAmount = List.length ind_tps
           val areInts = foldl (fn (x, y) => typesEqual(BType Int, x) andalso y) true ind_tps
-          val id_tp = List.find (fn (look, Array(_,_)) => if id = look then true else false
-                                   | (_, _) => false) vtab
+          val id_tp = SymTab.lookup id vtab
         in
           case id_tp of 
             NONE => raise Error("The array does not exist in the vtab.", pos)
-          | SOME (_, Array(rank, _) ) => if rank > 0 andalso rank = indAmount 
-                                         then LValue(Index((id, (#2 (valOf id_tp))), new_inds), pos)
-                                         else raise Error("array " ^ id ^ " does not have the right rank.", pos)
-          | _ => raise Error("come up with a good warning massage - array indexing", pos)
+          | SOME tp => 
+              let
+                val rank = case tp of
+                             Array(r, _) => r
+                           | _ => raise Error("typechecking Index, variable must be an array", pos)
+              in
+                if rank > 0 andalso rank = indAmount andalso areInts 
+                then LValue(Index((id, tp), new_inds), pos)
+                else raise Error("array " ^ id ^ " does not have the right parameters", pos)
+              end
         end
         (*************************************************************)
         (*** TO DO: IMPLEMENT for G-ASSIGNMENT, TASK 4             ***)

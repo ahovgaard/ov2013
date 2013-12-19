@@ -306,7 +306,8 @@ and callFun ( (rtp : Type option, fid : string, fargs : Dec list, body : StmtBlo
                     (NONE  , _) => 
                     let 
                       (*updates the vtable for each expression*)
-                      fun updateAll ([], []) = () 
+                      fun updateAll (_, []) = () 
+                        | updateAll ([], _) = ()
                         | updateAll (exp::exps, in_arg::in_args) = 
                             let
                               val a = updateOuterVtable vtab new_vtab (exp, in_arg); 
