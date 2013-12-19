@@ -19,27 +19,25 @@ and callFun ( (rtp : Type option, fid : string, fargs : Dec list,
                body : StmtBlock, pdcl : Pos),
               aargs : Value list, aexps : Exp list, vtab, ftab, pcall : Pos
             ) : Value option =
-  let val () = () (* print ("\nCalling function: "^fid^"\n") *)
-  in  case fid of
-        (* treating "special" functions such as ord/chr/write, etc. *)
+  case fid of
+       (* treating "special" functions such as ord/chr/write, etc. *)
 
 (* ... *)
 
-      | other    =>
-          let val new_vtab = bindTypeIds(fargs, aargs, fid, pdcl, pcall)
-              val res  = execBlock( body, new_vtab, ftab )
-          in  ( case (rtp, res) of
-                  (NONE  , _) => (app (updateOuterVtable vtab new_vtab)
-                                      (ListPair.zip (aexps, fargs));
-                                 NONE)
-                | (SOME t, SOME r) => if   typesEqual(t, typeOfVal r) 
-                                      then SOME r
-                                      else raise Error("in call fun: result does " ^
-                                                       "not match the return type! In fun/proc:" ^ fid ^ 
-                                                       " rettype: "^pp_type t^" result: "^pp_val r, pcall )
-                | otherwise        => raise Error("in call: fun/proc "^fid^" illegal result: ", pcall ) )
-          end
-    end
+     | other    =>
+         let val new_vtab = bindTypeIds(fargs, aargs, fid, pdcl, pcall)
+             val res  = execBlock( body, new_vtab, ftab )
+         in  ( case (rtp, res) of
+                 (NONE  , _)      => (app (updateOuterVtable vtab new_vtab)
+                                          (ListPair.zip (aexps, fargs));
+                                     NONE)
+               | (SOME t, SOME r) => if   typesEqual(t, typeOfVal r) 
+                                     then SOME r
+                                     else raise Error("in call fun: result does " ^
+                                                      "not match the return type! In fun/proc:" ^ fid ^ 
+                                                      " rettype: "^pp_type t^" result: "^pp_val r, pcall )
+               | otherwise        => raise Error("in call: fun/proc "^fid^" illegal result: ", pcall ) )
+         end
   \end{lstlisting}
   \caption{Case for procedure call in callFun.}
   \label{fig_callFun}

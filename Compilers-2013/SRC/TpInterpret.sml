@@ -302,9 +302,9 @@ and callFun ( (rtp : Type option, fid : string, fargs : Dec list, body : StmtBlo
          let val new_vtab = bindTypeIds(fargs, aargs, fid, pdcl, pcall)
              val res  = execBlock( body, new_vtab, ftab )
          in  ( case (rtp, res) of
-                 (NONE  , _) => (app (updateOuterVtable vtab new_vtab)
-                                     (ListPair.zip (aexps, fargs));
-                                NONE)
+                 (NONE  , _)      => (app (updateOuterVtable vtab new_vtab)
+                                          (ListPair.zip (aexps, fargs));
+                                     NONE)
                | (SOME t, SOME r) => if   typesEqual(t, typeOfVal r) 
                                      then SOME r
                                      else raise Error("in call fun: result does " ^
