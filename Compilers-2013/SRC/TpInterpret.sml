@@ -301,7 +301,7 @@ and callFun ( (rtp : Type option, fid : string, fargs : Dec list, body : StmtBlo
        (*******************************************************************************)
          let val new_vtab = bindTypeIds(fargs, aargs, fid, pdcl, pcall)
              val res  = execBlock( body, new_vtab, ftab )
-         in  ( case (rtp, res) of
+         in  case (rtp, res) of
                  (NONE  , _)      => (app (updateOuterVtable vtab new_vtab)
                                           (ListPair.zip (aexps, fargs));
                                      NONE)
@@ -310,14 +310,14 @@ and callFun ( (rtp : Type option, fid : string, fargs : Dec list, body : StmtBlo
                                      else raise Error("in call fun: result does " ^
                                                       "not match the return type! In fun/proc:" ^ fid ^ 
                                                       " rettype: "^pp_type t^" result: "^pp_val r, pcall )
-               | otherwise        => raise Error("in call: fun/proc "^fid^" illegal result: ", pcall ) )
+               | otherwise        => raise Error("in call: fun/proc "^fid^" illegal result: ", pcall ) 
          end
 
 (* Update the outer vtable with data from the inner vtable.  Here, out_exp is an
  * expression in a call, e.g. x in f(x), and in_arg is the local argument name
- * in f, e.g. m when 'procedure f(m) ... end' is defined.  Remember that call by value
- * result requires that argument expressions are variable names, i.e. expressions like
- * '2 + x' do not work, since '2 * x' is not an LValue variable name.
+ * in f, e.g. m when 'procedure f(m) ... end' is defined. If the expressions
+ * argument, out_exp, is not an LValue (variable or indexed array), nothing is
+ * changed.
  *)
 and updateOuterVtable vtabOuter vtabInner (LValue out_exp, Dec((s, t), pos)) = 
   let
@@ -337,7 +337,10 @@ and updateOuterVtable vtabOuter vtabInner (LValue out_exp, Dec((s, t), pos)) =
     | (_, _) => raise Error("Could not find the final value for call by value result, " ^ s, getPos(out_exp))
   end
 
-  | updateOuterVtable _ _ (out_exp, _)  = raise Error("call by value result requires that arguments are LVAL", posOfExp(out_exp)) 
+  | updateOuterVtable _ _ _ = ()
+  
+  (*raise Error("call by value result requires that arguments are LVAL",
+  * posOfExp(out_exp))*)
 
 
 and mkNewArr( btp : BasicType, shpval : Value list, pos : Pos ) : Value =

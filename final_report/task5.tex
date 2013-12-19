@@ -22,35 +22,67 @@ and callFun ( (rtp : Type option, fid : string, fargs : Dec list,
   case fid of
        (* treating "special" functions such as ord/chr/write, etc. *)
 
-(* ... *)
+  (* ... *)
 
      | other    =>
          let val new_vtab = bindTypeIds(fargs, aargs, fid, pdcl, pcall)
              val res  = execBlock( body, new_vtab, ftab )
-         in  ( case (rtp, res) of
+         in case (rtp, res) of
                  (NONE  , _)      => (app (updateOuterVtable vtab new_vtab)
                                           (ListPair.zip (aexps, fargs));
                                      NONE)
-               | (SOME t, SOME r) => if   typesEqual(t, typeOfVal r) 
-                                     then SOME r
-                                     else raise Error("in call fun: result does " ^
-                                                      "not match the return type! In fun/proc:" ^ fid ^ 
-                                                      " rettype: "^pp_type t^" result: "^pp_val r, pcall )
-               | otherwise        => raise Error("in call: fun/proc "^fid^" illegal result: ", pcall ) )
+               | (SOME t, SOME r) => (* ... *)
          end
   \end{lstlisting}
-  \caption{Case for procedure call in callFun.}
+  \caption{Case for procedure call in \texttt{callFun}.}
   \label{fig_callFun}
 \end{figure}
+
+\noindent
+The function \verb|updateOuterVtable| looks up the identifiers of the actual
+argument and the formal argument, and if these both exist, the formal argument
+reference is assigned the dereferenced value of the actual argument, using the
+imperative SML references feature. The \verb|updateOuterVtable| function is
+shown in figure \ref{fig_updateOuterVtable}.
  
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+(* Update the outer vtable with data from the inner vtable. Here, out_exp is
+ * an expression in a call, e.g. x in f(x), and in_arg is the local argument
+ * name in f, e.g. m when 'procedure f(m) ... end' is defined. Remember that
+ * call by value result requires that argument expressions are variable names,
+ * i.e. expressions like '2 + x' do not work, since '2 * x' is not an LValue
+ * variable name.
+ *)
+and updateOuterVtable vtabOuter vtabInner (LValue out_exp, Dec((s, t), pos)) = 
+  let
+    fun getIdent (Var((s, t)), _)      = s
+      | getIdent (Index((s, t), _), _) = s
+    
+    fun getPos (Var((s, t)), pos)      = pos
+      | getPos (Index((s, t), _), pos) = pos
 
+    val ident = getIdent out_exp
+    val finalValue  = SymTab.lookup s vtabInner
+    val modifyValue = SymTab.lookup ident vtabOuter
+  in
+    case (modifyValue, finalValue) of
+         (NONE, NONE)      =>
+            raise Error("Could not find the final value for call by value \
+                        \result, " ^ s, getPos(out_exp))
+       | (SOME m, SOME f)  => (m := !f; ())
+       | (_, _)            =>
+            raise Error("Could not find the final value for call by value \
+                        \result, " ^ s, getPos(out_exp))
+  end
 
+  | updateOuterVtable _ _ _ = ()
+  \end{lstlisting}
+  \caption{Function \texttt{updateOuterVtable}.}
+  \label{fig_updateOuterVtable}
+\end{figure}
 
-
-The lists of actual expression arguments and formal arguments are w
-
-A function \verb|updateAll| walks through the lists actual expressiong
-arguments and formal arguments, and calls a new function
-\verb|updateOuterVtable| on each pair.
+\noindent
+To make the call-by-value-result strategy work in code generation
 
 \subsection{Testing}
