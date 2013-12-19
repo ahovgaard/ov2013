@@ -89,8 +89,118 @@ were made a few places in the \verb|Compiler.sml| file. The \verb|putArgs|
 function, recursively compiling expressions given as arguments to a procedure
 and generating \textsc{Mips} \verb|MOVE| instruction for moving arguments into
 registers for the procedure to work on, was modified to also generate and return
-a procedure stack frame prologue.
+a procedure stack frame epilogue that moves the modified values in the registers
+back into the actual arguments if these are \verb|LValue| types, i.e. if they
+can be assigned values, e.g. variables and indexed arrays. The modified version
+of \verb|putArgs| is shown figure \ref{fig_putArgs}.\\
+\\
+If the expression \verb|e| is of type \verb|LValue|, the name of that identifier
+is looked up in the symbol table and this symbolic register is used in the
+generation of \textsc{Mips} code for moving the content of argument registers back
+into the lvalues given as arguments to the procedure.
 
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+(* move args to callee registers *)
+and putArgs [] vtable reg = ([], reg, [])
+  | putArgs (e::es) vtable reg =
+    let
+        val t1 = "_funarg_"^newName()
+        val code1 = compileExp(vtable, e, t1)
+
+        val lvalIdentOption =
+          case e of LValue (Var (n, _), _)          => SOME n
+                  | LValue ((Index ((n, _), _)), _) => SOME n
+                  | _                               => NONE
+
+        fun lvalIdentLookup n =
+          case SymTab.lookup n vtable of
+               SOME t => t
+             | NONE   => raise Error ("Variable is not found in vtable: "
+                                      ^ n, (0,0))
+
+        val moveBack =
+          case lvalIdentOption of
+               SOME n => [Mips.MOVE (lvalIdentLookup n, makeConst reg)]
+             | NONE   => []
+
+        val (code2, maxreg, epi) = putArgs es vtable (reg+1)
+    in
+        (   code1                          (* compute arg1 *)
+          @ code2                          (* compute rest *)
+          @ [Mips.MOVE (makeConst reg,t1)] (* store in reg *)
+          , maxreg
+          , epi @ moveBack)                (* copy back from regs to args *)
+    end
+  \end{lstlisting}
+  \caption{Function \texttt{putArgs}.}
+  \label{fig_putArgs}
+\end{figure}
+
+\noindent
+These generated instructions are placed in the program in the case of a
+procedure call in the \verb|compileStmt| function, they are simply returned from
+a call to \verb|putArgs| and placed after a jump-and-link instruction, jumping
+to the procedure code and are therefore executed after the procedure returns.
+This change is shown in figure \ref{fig_compileStmt}. The epilogue code is
+denoted be \verb|epi|.
+
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+| compileStmt(vtable, s, exitLabel) =
+    case s of 
+
+      (* ... *)
+
+      | ProcCall ((n,_), es, p) => 
+        let
+            val (mvcode, maxreg, epi) = putArgs es vtable minReg
+        in
+            mvcode
+          @ [Mips.JAL (n, List.tabulate (maxreg, fn reg => makeConst reg))]
+          @ epi
+        end
+  \end{lstlisting}
+  \caption{Case for procedures in function \texttt{compileStmt}.}
+  \label{fig_compileStmt}
+\end{figure}
+
+\noindent
+A similar change is made to the \verb|compileF| function, as shown in figure
+\ref{fig_compileF}.
+
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+and compileF (isProc, fname, args, block, pos) =
+  let val (movePairs, vtable) = getMovePairs args [] minReg
+      val argcode = map (fn (vname, reg) => Mips.MOVE (vname, reg)) movePairs
+      val rargcode = if isProc
+                     then map (fn (vname, reg) => Mips.MOVE (reg, vname)) movePairs
+                     else []
+      val body = compileStmts block vtable (fname ^ "_exit")
+      val (body1, _, maxr, spilled) =  (* call register allocator *)
+          RegAlloc.registerAlloc ( argcode @ body @ rargcode @
+                                   [Mips.LABEL (fname^"_exit")])
+                                 ["2"] minReg maxCaller maxReg 0
+                                 (* 2 contains return val*)
+      val (savecode, restorecode, offset) = (* save/restore callee-saves *)
+          stackSave (maxCaller+1) maxr [] [] (4*spilled)
+  in  [Mips.COMMENT ("Function " ^ fname),
+         Mips.LABEL fname,       (* function label *)
+         Mips.SW (RA, SP, "-4"), (* save return address *)
+         Mips.ADDI (SP,SP,makeConst (~4-offset))] (* move SP "up" *)
+      @ savecode                 (* save callee-saves registers *)
+      @ body1                    (* code for function body *)
+     (* @ [Mips.LABEL (fname^"_exit")] (* exit label *)*)
+      @ restorecode              (* restore callee-saves registers *)
+      @ [Mips.ADDI (SP,SP,makeConst (4+offset))] (* move SP "down" *)
+      @ [Mips.LW (RA, SP, "-4"),  (* restore return addr *)
+         Mips.JR (RA, [])]       (* return *)
+  end
+  \end{lstlisting}
+  \caption{Case for procedures in function \texttt{compileStmt}.}
+  \label{fig_compileF}
+\end{figure}
 
 
 \subsection{Testing}
