@@ -8,7 +8,50 @@ interpreter and in the \textsc{Mips} code generator. In the interpreter module,
 \verb|TpInterpret.sml|, the \verb|callFun| function was updated in the case when
 the function identifier is predefined and the  option return type is
 \verb|NONE|, i.e. when the called function is a procedure without a return a
-value. A function \verb|updateAll| walks through the lists actual expressiong
+value.\\
+In this case, a new function \verb|updateOuterVtable| is applied to each pair of
+actual expression argument and formal argument of the function call, using the
+code shown in figure \ref{fig_callFun}
+ 
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+and callFun ( (rtp : Type option, fid : string, fargs : Dec list,
+               body : StmtBlock, pdcl : Pos),
+              aargs : Value list, aexps : Exp list, vtab, ftab, pcall : Pos
+            ) : Value option =
+  let val () = () (* print ("\nCalling function: "^fid^"\n") *)
+  in  case fid of
+        (* treating "special" functions such as ord/chr/write, etc. *)
+
+(* ... *)
+
+      | other    =>
+          let val new_vtab = bindTypeIds(fargs, aargs, fid, pdcl, pcall)
+              val res  = execBlock( body, new_vtab, ftab )
+          in  ( case (rtp, res) of
+                  (NONE  , _) => (app (updateOuterVtable vtab new_vtab)
+                                      (ListPair.zip (aexps, fargs));
+                                 NONE)
+                | (SOME t, SOME r) => if   typesEqual(t, typeOfVal r) 
+                                      then SOME r
+                                      else raise Error("in call fun: result does " ^
+                                                       "not match the return type! In fun/proc:" ^ fid ^ 
+                                                       " rettype: "^pp_type t^" result: "^pp_val r, pcall )
+                | otherwise        => raise Error("in call: fun/proc "^fid^" illegal result: ", pcall ) )
+          end
+    end
+  \end{lstlisting}
+  \caption{Case for procedure call in callFun.}
+  \label{fig_callFun}
+\end{figure}
+ 
+
+
+
+
+The lists of actual expression arguments and formal arguments are w
+
+A function \verb|updateAll| walks through the lists actual expressiong
 arguments and formal arguments, and calls a new function
 \verb|updateOuterVtable| on each pair.
 

@@ -235,85 +235,83 @@ fun execPgm funlst =
 and callFun ( (rtp : Type option, fid : string, fargs : Dec list, body : StmtBlock, pdcl : Pos),
               aargs : Value list, aexps : Exp list, vtab, ftab, pcall : Pos
             ) : Value option =
-  let val () = () (* print ("\nCalling function: "^fid^"\n") *)
-  in  case fid of
-        (* treating "special" functions such as ord/chr/write, etc. *)
-        "ord"    => ( case aargs of
-                        [BVal(Chr c)] => SOME ( BVal( Num (ord c) ) )
-                      | otherwise => raise Error("in call ord: arg Does Not " ^
-                                                 "Evaluate to Char: "^ pp_vals aargs, pcall) )
-      | "chr"    => ( case aargs of
-                        [BVal(Num n)] => SOME ( BVal( Chr (chr n) ) )
-                      | otherwise => raise Error("in call chr: arg Does Not " ^
-                                                 "Evaluate to Int:  "^ pp_vals aargs, pcall) )
-      | "len"    => ( case aargs of
-                        [BVal(Num i), Arr(_,shp,_,_)] =>
-                              if i < 0 orelse i >= (length shp)
-                              then raise Error("in call to len, illegal dimension: "^
-                                               Int.toString i^", at ", pcall)
-                              else SOME ( BVal ( Num (List.nth( shp, i ) ) ) )
-                      | otherwise => raise Error("in call len: illegal arguments: " ^
-                                                 pp_vals aargs, pcall) )
-      | "readInt"=> ( case aargs of
-                        [] => ( case Int.fromString( inputLine(TextIO.stdIn) ) of
-                                  SOME n => SOME (BVal( Num  n ))
-                                | NONE   => raise Error("In readNum Failed! ", pcall) )
-                      | _  => raise Error("call to readNum: Non-Empty argument list! At: ", pcall) )
-      | "readBool"=>( case aargs of
-                        [] => ( case Int.fromString( inputLine(TextIO.stdIn) ) of
-                                  SOME b => if( b = 0 ) then SOME (BVal( Log false )) else SOME (BVal( Log true ))
-                                | NONE   => raise Error("in readLog Failed! ", pcall) )
-                      | _  => raise Error("In call to readLog: Non-Empty argument list! At: ", pcall) )
-      | "readChar"=>( case aargs of
-                        [] => ( case Char.fromCString( inputLine(TextIO.stdIn) ) of
-                                  SOME c => SOME (BVal( Chr  c ))
-                                | NONE   => raise Error("in readChr Failed! ", pcall) )
-                      | _  => raise Error("In call to readChr: Non-Empty argument list! At: ", pcall) )
+  case fid of
+       (* treating "special" functions such as ord/chr/write, etc. *)
+       "ord"    => ( case aargs of
+                       [BVal(Chr c)] => SOME ( BVal( Num (ord c) ) )
+                     | otherwise => raise Error("in call ord: arg Does Not " ^
+                                                "Evaluate to Char: "^ pp_vals aargs, pcall) )
+     | "chr"    => ( case aargs of
+                       [BVal(Num n)] => SOME ( BVal( Chr (chr n) ) )
+                     | otherwise => raise Error("in call chr: arg Does Not " ^
+                                                "Evaluate to Int:  "^ pp_vals aargs, pcall) )
+     | "len"    => ( case aargs of
+                       [BVal(Num i), Arr(_,shp,_,_)] =>
+                             if i < 0 orelse i >= (length shp)
+                             then raise Error("in call to len, illegal dimension: "^
+                                              Int.toString i^", at ", pcall)
+                             else SOME ( BVal ( Num (List.nth( shp, i ) ) ) )
+                     | otherwise => raise Error("in call len: illegal arguments: " ^
+                                                pp_vals aargs, pcall) )
+     | "readInt"=> ( case aargs of
+                       [] => ( case Int.fromString( inputLine(TextIO.stdIn) ) of
+                                 SOME n => SOME (BVal( Num  n ))
+                               | NONE   => raise Error("In readNum Failed! ", pcall) )
+                     | _  => raise Error("call to readNum: Non-Empty argument list! At: ", pcall) )
+     | "readBool"=>( case aargs of
+                       [] => ( case Int.fromString( inputLine(TextIO.stdIn) ) of
+                                 SOME b => if( b = 0 ) then SOME (BVal( Log false )) else SOME (BVal( Log true ))
+                               | NONE   => raise Error("in readLog Failed! ", pcall) )
+                     | _  => raise Error("In call to readLog: Non-Empty argument list! At: ", pcall) )
+     | "readChar"=>( case aargs of
+                       [] => ( case Char.fromCString( inputLine(TextIO.stdIn) ) of
+                                 SOME c => SOME (BVal( Chr  c ))
+                               | NONE   => raise Error("in readChr Failed! ", pcall) )
+                     | _  => raise Error("In call to readChr: Non-Empty argument list! At: ", pcall) )
 
-      | "newIntArr" => ( case aargs of
-                           []   => raise Error("In call to newIntArr: no arguments! At: ", pcall)
-                         | dims => SOME ( mkNewArr( Int, dims, pcall ) ) )
-      | "newBoolArr"=> ( case aargs of
-                           []   => raise Error("In call to newBoolArr: no arguments! At: ", pcall)
-                         | dims => SOME ( mkNewArr( Bool, dims, pcall ) ) )
-      | "newCharArr"=> ( case aargs of
-                           []   => raise Error("In call to newCharArr: no arguments! At: ", pcall)
-                         | dims => SOME ( mkNewArr( Char, dims, pcall ) ) )
+     | "newIntArr" => ( case aargs of
+                          []   => raise Error("In call to newIntArr: no arguments! At: ", pcall)
+                        | dims => SOME ( mkNewArr( Int, dims, pcall ) ) )
+     | "newBoolArr"=> ( case aargs of
+                          []   => raise Error("In call to newBoolArr: no arguments! At: ", pcall)
+                        | dims => SOME ( mkNewArr( Bool, dims, pcall ) ) )
+     | "newCharArr"=> ( case aargs of
+                          []   => raise Error("In call to newCharArr: no arguments! At: ", pcall)
+                        | dims => SOME ( mkNewArr( Char, dims, pcall ) ) )
 
-      | "write"  => ( case aargs of
-                        [BVal(Num n)] => ( print(Int.toString n); NONE )
-                      | [BVal(Log b)] => let val res = if b then "1" else "0" in (print(res); NONE) end
-                      | [BVal(Chr c)] => ( print (str c)  ; NONE )
-                      | [arr] => let val str_arr = isGetString arr
-                                 in  if str_arr = ""
-                                     then ( print (pp_val arr); NONE )
-                                     else ( print str_arr;      NONE )
-                                 end
-                      | otherwise     => raise Error("in call write: illegal arguments: " ^
-                                                      pp_vals aargs, pcall ) )
-      | other    =>
-        (*******************************************************************************)
-        (*** TASK 5: call by value result for procedures require modifying this code ***)
-        (***       1. if `rtp' is `NONE', then this is a procedure call, hence modify***)
-        (***       2. after the executing the call, for ANY expression in `aargs',   ***)
-        (***            i.e., actual arg. expressions, which is a VARIABLE, do:      ***)
-        (***               2.1 get its final value in callee from `new_vtab' and     ***)
-        (***               2.2 update the corresponding entry in `vtab'              ***)
-        (*******************************************************************************)
-          let val new_vtab = bindTypeIds(fargs, aargs, fid, pdcl, pcall)
-              val res  = execBlock( body, new_vtab, ftab )
-          in  ( case (rtp, res) of
-                  (NONE  , _) => (app (updateOuterVtable vtab new_vtab)
-                                      (ListPair.zip (aexps, fargs));
-                                 NONE)
-                | (SOME t, SOME r) => if   typesEqual(t, typeOfVal r) 
-                                      then SOME r
-                                      else raise Error("in call fun: result does " ^
-                                                       "not match the return type! In fun/proc:" ^ fid ^ 
-                                                       " rettype: "^pp_type t^" result: "^pp_val r, pcall )
-                | otherwise        => raise Error("in call: fun/proc "^fid^" illegal result: ", pcall ) )
-          end
-    end
+     | "write"  => ( case aargs of
+                       [BVal(Num n)] => ( print(Int.toString n); NONE )
+                     | [BVal(Log b)] => let val res = if b then "1" else "0" in (print(res); NONE) end
+                     | [BVal(Chr c)] => ( print (str c)  ; NONE )
+                     | [arr] => let val str_arr = isGetString arr
+                                in  if str_arr = ""
+                                    then ( print (pp_val arr); NONE )
+                                    else ( print str_arr;      NONE )
+                                end
+                     | otherwise     => raise Error("in call write: illegal arguments: " ^
+                                                     pp_vals aargs, pcall ) )
+     | other    =>
+       (*******************************************************************************)
+       (*** TASK 5: call by value result for procedures require modifying this code ***)
+       (***       1. if `rtp' is `NONE', then this is a procedure call, hence modify***)
+       (***       2. after the executing the call, for ANY expression in `aargs',   ***)
+       (***            i.e., actual arg. expressions, which is a VARIABLE, do:      ***)
+       (***               2.1 get its final value in callee from `new_vtab' and     ***)
+       (***               2.2 update the corresponding entry in `vtab'              ***)
+       (*******************************************************************************)
+         let val new_vtab = bindTypeIds(fargs, aargs, fid, pdcl, pcall)
+             val res  = execBlock( body, new_vtab, ftab )
+         in  ( case (rtp, res) of
+                 (NONE  , _) => (app (updateOuterVtable vtab new_vtab)
+                                     (ListPair.zip (aexps, fargs));
+                                NONE)
+               | (SOME t, SOME r) => if   typesEqual(t, typeOfVal r) 
+                                     then SOME r
+                                     else raise Error("in call fun: result does " ^
+                                                      "not match the return type! In fun/proc:" ^ fid ^ 
+                                                      " rettype: "^pp_type t^" result: "^pp_val r, pcall )
+               | otherwise        => raise Error("in call: fun/proc "^fid^" illegal result: ", pcall ) )
+         end
 
 (* Update the outer vtable with data from the inner vtable.  Here, out_exp is an
  * expression in a call, e.g. x in f(x), and in_arg is the local argument name
