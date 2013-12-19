@@ -1,0 +1,32 @@
+program testMult;
+
+
+procedure main()
+var result     : int;
+    a          : bool;
+		nota       : bool;
+
+begin 
+		a := true;	
+		nota := not a;
+
+		write("a = ");
+		write(a);
+		write('\n');
+
+		write("not a = ");
+		write(nota);
+		write('\n');
+   
+	 	a := false;
+		nota := not a;
+
+	  write("a = ");
+		write(a);
+		write('\n');
+
+		write("not a = ");
+		write(nota);
+		write('\n');
+
+end;

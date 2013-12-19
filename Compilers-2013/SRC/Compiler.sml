@@ -202,12 +202,22 @@ struct
         end
 
     (* Task 2: Some code-generation of operators should occur here. *)
-(*
-    | compileExp( vtable, Times(e1, e2, pos), place ) =
-        raise Error ( "Task 2 not implemented yet in code generator ", pos )
-    | compileExp( vtable, Div(e1, e2, pos), place ) =
-        raise Error ( "Task 2 not implemented yet in code generator ", pos )
-*)
+
+    | compileExp( vtable, Times(e1, e2, _), place ) =
+        let val t1 = "times1_" ^ newName()
+            val c1 = compileExp(vtable, e1, t1)
+            val t2 = "times2_" ^ newName()
+            val c2 = compileExp(vtable, e2, t2)
+        in c1 @ c2 @ [Mips.MUL (place, t1, t2)]
+        end
+    | compileExp( vtable, Div(e1, e2, _), place ) =
+        let val t1 = "div1_" ^ newName()
+            val c1 = compileExp(vtable, e1, t1)
+            val t2 = "div2_" ^ newName()
+            val c2 = compileExp(vtable, e2, t2)
+        in c1 @ c2 @ [Mips.DIV (place, t1, t2)]
+        end
+
 
     | compileExp( vtable, Equal(e1, e2, _), place ) =
         let val t1 = "eq1_" ^ newName()
@@ -241,12 +251,26 @@ struct
         end
 
     (* Task 2: Some code-generation of operators should occur here. *)
-(*
-    | compileExp( vtable, Or(e1, e2, pos), place ) =
-        raise Error ( "Task 2 not implemented yet in code generator ", pos )
-    | compileExp( vtable, Not(e1, pos), place ) =
-        raise Error ( "Task 2 not implemented yet in code generator ", pos )
-*)
+
+    | compileExp( vtable, Or(e1, e2, _), place ) =
+        let val t1 = "or1_" ^ newName()
+            val c1 = compileExp(vtable, e1, t1)
+            val t2 = "or2_" ^ newName()
+            val c2 = compileExp(vtable, e2, t2)
+            val label = "_or_" ^ newName() 
+        in c1 (* if t1 is true than we just skip t2 values, but if t1 is false we take t2 value as the deciding factor *)
+           @ [Mips.MOVE (place, t1), Mips.BNE (place, "0", label)]
+           @ c2
+           @ [Mips.MOVE (place, t2), Mips.LABEL label]
+        end
+
+
+
+    | compileExp( vtable, Not(e1, _), place ) =
+        let val t1 = "not1_" ^ newName()
+            val c1 = compileExp(vtable, e1, t1)
+        in c1 @ [Mips.MOVE(place, t1), Mips.XORI(place, t1, "1")]
+        end
 
     | compileExp( vtab, FunApp (("len",(_,_)),args,pos), place ) =
        ( case args of
@@ -382,7 +406,7 @@ struct
         end
 
     | compileExp( vtable, FunApp ((f,_),es,_), place ) =
-        let val (mvcode,maxreg) = putArgs es vtable minReg
+        let val (mvcode,maxreg, _) = putArgs es vtable minReg
             val regs = List.tabulate ( maxreg - minReg,
                                        makeConst o (fn x => x + minReg) )
 
@@ -397,21 +421,29 @@ struct
 
   (* move args to callee registers *)
   and putArgs [] vtable reg =
-        ([], reg)
+        ([], reg, [])
     | putArgs (e::es) vtable reg =
       let
           val t1 = "_funarg_"^newName()
           val code1 = compileExp(vtable, e, t1)
-          val (code2, maxreg) = putArgs es vtable (reg+1)
+          val str = case e of
+                      LValue ( Var( n, _), _ ) => n
+                    | LValue ( (Index((n, _),_)), _)=> n
+                    | _ => raise Error("Argument in procedure must be a LValue", (0,0))
+          val t = case SymTab.lookup str vtable of
+                    SOME t => t
+                  | NONE => raise Error("Variable is not found in vtable: " ^ str, (0,0))           
+
+          val (code2, maxreg, epi) = putArgs es vtable (reg+1)
       in
           (   code1                          (* compute arg1 *)
             @ code2                          (* compute rest *)
             @ [Mips.MOVE (makeConst reg,t1)] (* store in reg *)
-            , maxreg)
+            , maxreg
+            , epi @ [Mips.MOVE (t, makeConst reg)])
       end
 (** TASK 5: You may want to create a function slightly similar to putArgs,
  *  but instead moving args back to registers. **)
-
 
   and compileLVal( vtab : VTab, Var (n,_) : LVAL, pos : Pos ) : Mips.mips list * Location =
         ( case SymTab.lookup n vtab of
@@ -421,7 +453,90 @@ struct
     | compileLVal( vtab : VTab, Index ((n,_),  []) : LVAL, pos : Pos ) =
         raise Error("variable "^"n"^" with empty index, at ", pos)
 
-    | compileLVal( vtab : VTab, Index ((n,t),inds) : LVAL, pos : Pos ) =
+    | compileLVal( vtab : VTab, Index ((n, Array(rank, tp)),inds) : LVAL, pos : Pos ) =
+        let 
+          val mem = case SymTab.lookup n vtab of 
+                      SOME n => n
+                    | NONE => raise Error("no such variable for array, " ^ n, pos)
+          val strideEnd = (rank * 2)-1
+          val ptr = rank * 2 *4
+          fun dims base i  = 
+            let
+              val r = "metaDataDims_"^newName()
+              val code = Mips.LW(r, base, Int.toString (i*4))
+            in
+              if i < rank then
+                [(code, r)] @ (dims base (i+1))
+              else
+                []
+            end
+          fun stride base i =
+            let
+              val r = "metaDataStride_"^newName() 
+              val code = Mips.LW(r, base, Int.toString (i*4))
+            in
+              if i < strideEnd then
+                [(code, r)] @ (stride base (i+1))
+              else
+                []
+            end
+
+          fun calculateIndices [] = []
+            | calculateIndices (exp::exps) =
+            let 
+              val temp = "indices_"^newName()
+              val code = compileExp(vtab, exp, temp)
+            in
+              [(code, temp)] @ calculateIndices exps
+            end
+
+          val arrayAddress = "metaPointer_"^newName()
+          val addressCode = [Mips.ADDI(arrayAddress, mem, makeConst ptr)]
+          val strideMeta = stride mem rank          
+          val dimsMeta = dims mem 0 
+          val compiledInds = calculateIndices inds
+
+          fun checkBounds _ [] = []
+            | checkBounds [] _ = []
+            | checkBounds ((c, r)::dmeta) ((_, r2)::exps) =
+            let
+              val tb = "bounds_"^newName()
+              val label = "passed_bound_"^newName()
+              val code = [Mips.ADDI (tb, r2, "1"), Mips.SUB(tb, r, tb), Mips.SLTI(tb, tb, "0"),
+                          Mips.BNE(tb, "0", "_IllegalArrIndexError_") ]
+            in
+              [c] @ code @ (checkBounds dmeta exps)
+            end
+
+          fun computeIndexAddress [] ((c,r)::[]) place = c @ [Mips.ADD(place, r, place)] 
+            | computeIndexAddress ((c, r)::smeta) ((_, r2)::exps) place =
+            let
+              val tTemp = "index_"^newName()
+              val code = [c, Mips.MUL(tTemp, r2, r), Mips.ADD(place, tTemp, place)] 
+            in
+              code @ computeIndexAddress smeta exps place
+            end
+            | computeIndexAddress _ _ _ = raise Error("this cannot happen", pos)
+
+          val multValue = (case tp of
+                            Int => 4
+                          | Char => 1
+                          | Bool => 1)
+                          
+          val tMult = "multIndex_"^newName()
+          val tResult = "index_"^newName()
+          val init = [Mips.LI(tResult, "0")]
+          val checkCode = checkBounds dimsMeta compiledInds 
+          val indexCode = computeIndexAddress strideMeta compiledInds tResult 
+          val computeFinalAddress = [Mips.ADDI(tMult, "0", makeConst multValue),Mips.MUL(tResult, tResult, tMult), Mips.ADD(arrayAddress, arrayAddress, tResult)] 
+
+          val indCode = foldl op @ [] (map (fn (x,y) => x) compiledInds)
+          val result = addressCode @ indCode @ checkCode @ init @ indexCode @ computeFinalAddress 
+
+        in
+          (result, Mem (arrayAddress)) 
+        end
+    | compileLVal (vtab : VTab, Index ((n, BType a),inds) : LVAL, pos : Pos) = raise Error("LVAL index must use array", pos)
         (*************************************************************)
         (*** TODO: IMPLEMENT for G-ASSIGNMENT, TASK 4              ***)
         (*** Sugested implementation STEPS:                        ***)
@@ -445,9 +560,6 @@ struct
         (***     Bonus question: can you implement it without      ***)
         (***                        using the stored strides?      ***)
         (*************************************************************)
-        raise Error( "indexed variables UNIMPLEMENTED, at ", pos)
-
-
   (* instr.s for one statement. exitLabel is end (for control flow jumps) *)
   and compileStmt( vtab, ProcCall (("write",_), [e], pos), _ ) =
         let val place    = "_dat_"^newName()
@@ -502,9 +614,9 @@ struct
          * the procedure. **)
         | ProcCall ((n,_), es, p) => 
           let
-              val (mvcode, maxreg) = putArgs es vtable minReg
+              val (mvcode, maxreg, epi) = putArgs es vtable minReg
           in
-              mvcode @ [Mips.JAL (n, List.tabulate (maxreg, fn reg => makeConst reg))]
+              mvcode @ [Mips.JAL (n, List.tabulate (maxreg, fn reg => makeConst reg))] @ epi
           end
         | Assign (lv, e, p) =>
           let val (codeL,loc) = compileLVal(vtable, lv, p)
@@ -588,13 +700,17 @@ struct
                                      ^")", pos)
           val (movePairs, vtable) = getMovePairs args [] minReg
           val argcode = map (fn (vname, reg) => Mips.MOVE (vname, reg)) movePairs
+          val rargcode = if isProc
+                         then map (fn (vname, reg) => Mips.MOVE (reg, vname)) movePairs
+                         else []
           (** TASK 5: You need to add code to move variables back into callee registers,
            * i.e. something similar to 'argcode', just the other way round.  Use the
            * value of 'isProc' to determine whether you are dealing with a function
            * or a procedure. **)
           val body = compileStmts block vtable (fname ^ "_exit")
           val (body1, _, maxr, spilled) =  (* call register allocator *)
-              RegAlloc.registerAlloc ( argcode @ body )
+              RegAlloc.registerAlloc ( argcode @ body @ rargcode @ [Mips.LABEL
+(fname^"_exit")])
                                      ["2"] minReg maxCaller maxReg 0
                                      (* 2 contains return val*)
           val (savecode, restorecode, offset) = (* save/restore callee-saves *)
@@ -605,7 +721,7 @@ struct
              Mips.ADDI (SP,SP,makeConst (~4-offset))] (* move SP "up" *)
           @ savecode                 (* save callee-saves registers *)
           @ body1                    (* code for function body *)
-          @ [Mips.LABEL (fname^"_exit")] (* exit label *)
+         (* @ [Mips.LABEL (fname^"_exit")] (* exit label *)*)
           @ restorecode              (* restore callee-saves registers *)
           @ [Mips.ADDI (SP,SP,makeConst (4+offset))] (* move SP "down" *)
           @ [Mips.LW (RA, SP, "-4"),  (* restore return addr *)

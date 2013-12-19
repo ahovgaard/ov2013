@@ -1,0 +1,76 @@
+\documentclass[12pt,a4paper]{article}
+
+% use utf8 encoding
+\usepackage[utf8]{inputenc}
+
+% math environments (eg. align) and symbols
+\usepackage{amsmath, amssymb}
+
+% import graphicx for managing pictures
+\usepackage{graphicx}
+
+% import float for positioning using [H] in figures
+\usepackage{float}
+
+% import colortbl for coloring tabular cells
+\usepackage{colortbl}
+
+% tikz for drawing diagrams
+\usepackage{tikz}
+\usetikzlibrary{automata,positioning,arrows}
+
+% lstlisting environment for source code
+\usepackage{listings}
+
+% listings config for writing context-free grammars
+\lstdefinestyle{GrammarStyle}{
+    basicstyle=\ttfamily
+  , columns=fixed
+  , mathescape
+  , keepspaces=true
+  , xleftmargin=2em
+  , literate={->}{$\rightarrow$}{2}
+             {alpha}{$\alpha$}{1}
+             {delta}{$\delta$}{1}
+             {epsilon}{$\varepsilon$}{1}
+}
+
+% listings config for Standard ML code
+\lstdefinestyle{MLStyle}{
+  language=ML,
+  basicstyle=\scriptsize,
+  numbers=left,
+  numberstyle=\tiny,
+  frame=tb,
+  showstringspaces=false
+}
+
+% listings config for Paladim code
+\lstdefinestyle{paladim}{
+  %language=paladim,%
+  basicstyle=\scriptsize,
+  numbers=left,
+  numberstyle=\tiny,
+  frame=tb,
+  showstringspaces=false,
+  ottherkeywords={intMul}
+}
+
+\begin{document}
+\title{Introduction to Compilers (OV)\\
+       G-assignment Final Version}
+\author{Anders Kiel Hovgaard\\
+        Daniel Gavin\\
+        Rúni Klein Hansen}
+\date{December 20, 2013 - 14:00}
+\maketitle
+\input{introduction.tex}
+
+\input{task1.tex}
+\input{task2.tex}
+\input{task3.tex}
+\input{task4.tex}
+\input{task5.tex}
+
+\input{conclusion.tex}
+\end{document}

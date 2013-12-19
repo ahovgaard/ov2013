@@ -10,9 +10,12 @@ begin
    b := {true, true, true, false, false, true, true, true};
    c := {'w','o','w','s','u','c','h','a','r','r','a','y'};
    d := {{{1, 2}, {3, 4}},{{5, 6}, {7, 8}}};
-   a[4] := 2;
+   a[6] := 2;
    b[3] := true;
    c[1] := 'O';
    d[1, 1, 1] := 42;
    d[0, 0, 0] := a[0];
+	 write (d[1, 1, 1]);
+	 write ('\n');
+	 write (d[0, 0, 0]);
 end;

@@ -1,0 +1,26 @@
+program testMult;
+
+
+procedure main()
+var result     : int;
+    a          : bool;
+		nota       : bool;
+		c          : char;
+
+begin 
+		write("testing read() + read()");
+		write('\n');
+
+		result := read() + read();
+		write('\n');
+		write(result);
+		write('\n');
+
+
+		write("testing read() = int 2");
+		write('\n');
+		result := 2;
+		a := (result = read());
+		write('\n');
+		write(a);
+end;

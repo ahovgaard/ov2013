@@ -1,0 +1,38 @@
+program testMult;
+
+
+procedure main()
+var result     : int;
+    a          : int;
+		b          : int;
+		ret        : bool;
+begin 
+	a := 2;
+	b := 4;
+	result := a * b;
+	ret := result = 8;
+	write("is 2 * 4 = 8, mighty compiler? ");
+	if(ret = true) then write("Yes!")
+	else write("No!");
+
+	write('\n');
+	
+	a := 6;
+	b := 4;
+	result := a * b;
+	ret := result = 20;
+	write("is 6 * 4 = 20, mighty compiler? ");
+	if(ret = true) then write("Yes!")
+	else write("No!");
+
+	write('\n');
+	
+	ret := result = 24;
+	
+	write("Oh.. is the value 24 than? ");
+
+	if(ret = true) then write("Yes!")
+	else write("No!");
+
+
+end;

@@ -1,0 +1,229 @@
+\section{Task 2: Integer Multiplication and Division, and Boolean Operators}
+The second task was to implement integer multiplication and division, and the
+boolean operators \verb|or| and \verb|not|.\\
+\\
+The constructors for expressions of these types were added (uncommented) to the
+typed abstract syntax tree modules, \verb|TpAbsyn.sml|, that is, by adding the
+following lines of code (see figure \ref{fig_expConstructors}) to the \verb|Exp|
+datatype declaration.
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+  | Times of Exp * Exp * Pos  (* e.g., x * 3 *)
+  | Div   of Exp * Exp * Pos  (* e.g., x / 3 *)         
+  | Or    of Exp * Exp * Pos  (* e.g., (x=5) or y *)
+  | Not   of Exp       * Pos  (* e.g., not (x>3) *)      
+  \end{lstlisting}
+  \caption{Expression constructors.}
+  \label{fig_expConstructors}
+\end{figure}
+
+\noindent
+Cases for these constructors were added to the pretty printing function for
+expressions \verb|pp_exp| in the same file, with the code shown in figure
+\ref{fig_expPP}.
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+  | pp_exp (Or    (e1, e2, _)) = "( " ^ pp_exp e1 ^ " ^ " ^ pp_exp e2 ^ " )"
+  | pp_exp (Times (e1, e2, _)) = "( " ^ pp_exp e1 ^ " * " ^ pp_exp e2 ^ " )"
+  | pp_exp (Div   (e1, e2, _)) = "( " ^ pp_exp e1 ^ " / " ^ pp_exp e2 ^ " )"
+  | pp_exp (Not   (e1, _))     = "not ( " ^ pp_exp e1 ^" )"
+  \end{lstlisting}
+  \caption{Cases for pretty printing Exp constructors.}
+  \label{fig_expPP}
+\end{figure}
+
+\noindent
+Similarly cases were added to the \verb|typeOfExp| function, which returns the
+type of the expression, and \verb|posOfExp|, which just returns the position
+given in the last component of the tuple value of the constructors. These
+changes are shown in figure \ref{fig_expTyp} and \ref{fig_expPos}.
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+  | typeOfExp (Times (a, b, _)) = typeOfExp a
+  | typeOfExp (Div   (a, b, _)) = typeOfExp a
+  | typeOfExp (Or    (_, _, _)) = BType Bool
+  | typeOfExp (Not   (_, _)   ) = BType Bool
+  \end{lstlisting}
+  \caption{Cases for type of expression constructors.}
+  \label{fig_expTyp}
+\end{figure}
+
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+  | posOfExp (Times (_, _, p)) = p
+  | posOfExp (Div   (_, _, p)) = p
+  | posOfExp (Or    (_, _, p)) = p
+  | posOfExp (Not   (_,    p)) = p
+  \end{lstlisting}
+  \caption{Cases for positions of expression constructors.}
+  \label{fig_expPos}
+\end{figure}
+
+\noindent
+To make these expressions available for interpretation, two functions
+\verb|evalOr| and \verb|evalNot| are created and cases for all four new
+expressions are added to the evalExp function. These cases recursively calls
+\verb|evalExp|, evaluating the expressions given as arguments to the
+multiplication, division or boolean operators, and passes along the symbol
+tables. The changes are made in the interpreter module, \verb|TpInterpret.sml|,
+see figure \ref{fig_expInterpret}.
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+  fun evalOr (BVal (Log b1), BVal (Log b2), pos) = BVal (Log(b1 orelse b2))
+    | evalOr (v1, v2, pos) =
+        raise Error( "Or: argument types do not match. Arg1: " ^
+                      pp_val v1 ^ ", arg2: " ^ pp_val v2, pos )
+
+  fun evalNot (BVal (Log b), pos) = BVal (Log(not b))
+    | evalNot (v1, pos) =
+        raise Error( "Not: argument type is wrong. Arg: " ^
+                      pp_val v1, pos)
+
+  (* ... *)
+
+  (* fun evalExp ... *)
+    | evalExp ( Times(e1, e2, pos), vtab, ftab ) =
+        let val res1 = evalExp(e1, vtab, ftab)
+            val res2 = evalExp(e2, vtab, ftab)
+        in  evalBinop(op *, res1, res2, pos)
+        end
+    | evalExp ( Div(e1, e2, pos), vtab, ftab ) =
+        let val res1 = evalExp(e1, vtab, ftab)
+            val res2 = evalExp(e2, vtab, ftab)
+        in  evalBinop(op div, res1, res2, pos)
+        end
+
+  (* ... *)
+
+    | evalExp ( Or(e1, e2, pos), vtab, ftab ) =
+          let val r1 = evalExp(e1, vtab, ftab)
+              val r2 = evalExp(e2, vtab, ftab)
+    in  evalOr(r1, r2, pos)
+    end
+
+    | evalExp ( Not(e1, pos), vtab, ftab ) =
+          let val r1 = evalExp(e1, vtab, ftab)
+    in evalNot(r1, pos)
+    end
+  \end{lstlisting}
+  \caption{Evaluation of expressions in interpreter.}
+  \label{fig_expInterpret}
+\end{figure}
+
+\noindent
+The final changes in this task were made in the \verb|Type.sml| file: four
+cases were added to the function \verb|typeCheckExp|, which checks that the
+types of multiplication, division or boolean operator expressions are correct.
+This is done be recursively deciding the types of subexpressions and checking
+that these match with the expected types. The changes are shown in figure
+\ref{fig_expTypeCheck}.
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+  | typeCheckExp (vtab, AbSyn.Times (e1, e2, pos), _) =
+      let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Int))
+          val e2_new = typeCheckExp(vtab, e2, KnownType(BType Int))
+          val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
+      in  if typesEqual(BType Int, tp1) andalso typesEqual(BType Int, tp2)
+          then Times(e1_new, e2_new, pos)
+          else raise Error("in type check times exp, one argument is not \
+                           \of int type " ^ pp_type tp1 ^ " and " ^
+                           pp_type tp2 ^ " at ", pos)
+      end
+
+  | typeCheckExp (vtab, AbSyn.Div (e1, e2, pos), _) =
+      let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Int))
+          val e2_new = typeCheckExp(vtab, e2, KnownType(BType Int))
+          val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
+      in  if typesEqual(BType Int, tp1) andalso typesEqual(BType Int, tp2)
+          then Div(e1_new, e2_new, pos)
+          else raise Error("in type check div exp, one argument is not \
+                           \of int type " ^ pp_type tp1 ^ " and " ^
+                           pp_type tp2 ^ " at ", pos)
+      end
+
+  | typeCheckExp (vtab, AbSyn.Or  (e1, e2, pos), _) =
+      let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
+          val e2_new = typeCheckExp(vtab, e2, KnownType(BType Bool))
+          val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
+      in  if typesEqual(BType Bool, tp1) andalso typesEqual(BType Bool, tp2)
+          then Or(e1_new, e2_new, pos)        
+          else raise Error("in type check and exp, one argument is not \
+                           \of bool type " ^ pp_type tp1 ^ " and " ^
+                           pp_type tp2 ^ " at ", pos)
+      end
+
+  | typeCheckExp (vtab, AbSyn.Not (e1, pos), _) =
+      let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
+          val tp = typeOfExp e1_new
+      in  if typesEqual(BType Bool, tp)
+          then Not(e1_new, pos)
+          else raise Error ("in type check and exp, the only argument is \
+                            \not of bool type " ^ pp_type tp ^ " at" , pos )
+      end
+  \end{lstlisting}
+  \caption{Type checking of expressions.}
+  \label{fig_expTypeCheck}
+\end{figure}
+
+
+\subsection{Testing}
+Apart from the included files in the DATA folder, we have made a few paladim
+files that exclusively target the implemented functions, those are as follows:
+\\
+\begin{itemize}
+  \item Integer multiplication (*)
+  \item Integer division (/)
+  \item Boolean operator (=, not, or, and)
+\end{itemize}
+
+We initialize variables, assign values to them and then test them.
+\begin{verbatim}program test_task2;
+
+function intMul(a : int; b : int) : int
+begin
+  return a*b;
+end;
+
+function intDiv(c : int; d : int) : int
+var e : int;
+begin
+  e := c/d;
+  return e;
+end;
+
+procedure main()
+var x : int;
+    z : int;
+    n : int;
+    m : int;
+    a : bool;
+    b : bool;
+    c : bool;
+begin
+  x := 10;
+  z := 9;
+  n := intMul(5, 2);
+  write("\n");
+  write("5 * 2 = ");
+  write(n);
+  m := intDiv(10, 6);
+  write("\n");
+  write("10 / 6 = ");
+  write(m);
+  write("\n");
+  write("not true = ");
+  b := not true;
+  write(b);
+  write("\n");
+  a := not false;
+  c := a or not a;
+  write("a or not a = ");
+  write(c);
+  write("\n");
+  c := a and not a;
+  write("a and not a = ");
+  write(c);
+  write("\n");
+  b := c or not a = b and a = c;
+end;
+\end{verbatim}
