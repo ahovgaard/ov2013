@@ -1,3 +1,15 @@
 \section{Task 5}
+The fifth task was to implement call-by-value-result semantics for procedures,
+which means that procedures work on a local copy of its arguments, but copy the
+values of these back into the given arguments when it returns.\\
+\\
+This parameter passing strategy is implemented in both the \textsf{Paladim}
+interpreter and in the \textsc{Mips} code generator. In the interpreter module,
+\verb|TpInterpret.sml|, the \verb|callFun| function was updated in the case when
+the function identifier is predefined and the  option return type is
+\verb|NONE|, i.e. when the called function is a procedure without a return a
+value. A function \verb|updateAll| walks through the lists actual expressiong
+arguments and formal arguments, and calls a new function
+\verb|updateOuterVtable| on each pair.
 
 \subsection{Testing}
