@@ -35,12 +35,15 @@ See listing 1 for the implementation.
 \\
 In the implementation of the indexing for compiler, we made a decision to try and exploit the fact the arrays are static, i.e. we can't change
 the rank of the array on runtime. This meant we could unroll the loop to check the dimensions, which we otherwise would have to make a loop in
-Mips if our arrays were dynamic. We made a decision to split up every part of the Mips code, 
-first we got all the list dim mip code, we then got list stride code, than used the dims list to check the bounds, 
-after we used the stride list to get the index, then added that index together with the base address of the array. 
+Mips if our arrays were dynamic. We made a decision to split up every part of the Mips code.
+First we got all the list dim mip code, we then got list stride code, we than used the dims list to check the bounds, 
+after this we used the stride list to get the index, then added that index together with the base address of the array. 
 This meant we had to use a lot of variable registers. In retrospect we feel that making another version that only used a few variable 
 registers would most likely have been a better solution, since it's more likely to get spills if the compiler uses too many variable registers(if the register allocator implements a spilling algorithm, 
-which it would have to, otherwise the assembler code wouldn't work at all). 
+which it would have to, otherwise the assembler code wouldn't work at all). It was also important to make sure what type the array had, since the size of a character is 1 byte and the size of an int is 4 byte, 
+we therefore had to check the size of the type to generate the correct Mips.MULT. An important part in calculating the index was remembering that the stride of the last one was 1 and was not a part of the
+list of strides. Which meant that the length of our expression list was one expression larger than the strides list, which meant we did a pattern match for when that was the case and just added the expression value with
+the current accumulated value of the index.
 See listing 2 for the implementation of indexing for the compiler.
 \begin{lstlisting}[style=MLStyle, caption=Implementation of indexing for the compiler]
 	| compileLVal( vtab : VTab, Index ((n, Array(rank, tp)),inds) : LVAL, pos : Pos ) =
