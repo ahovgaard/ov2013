@@ -1,6 +1,141 @@
 \section{Task 4}
 
+To allow the ability of array, we had to implement the ability to index, both in the type check and the compiler. We first decided to implement
+the type checking, since we couldn't test our indexing without the type checking.
+
+\begin{lstlisting}[style=MLStyle]		
+| typeCheckExp( vtab, AbSyn.LValue( AbSyn.Index(id, inds), pos ), _ ) =
+    let 
+      val new_inds = map (fn ind => typeCheckExp(vtab, ind, KnownType(BType Int))) inds
+      val ind_tps = map (fn ind => typeOfExp ind) new_inds
+      val indAmount = List.length ind_tps
+      val areInts = foldl (fn (x, y) => typesEqual(BType Int, x) andalso y) true ind_tps
+      val id_tp = SymTab.lookup id vtab
+    in
+      case id_tp of 
+        NONE => raise Error("The array does not exist in the vtab.", pos)
+      | SOME tp => 
+        let
+          val rank = 
+					case tp of
+								Array(r, _) => r
+                | _ => raise Error("typechecking Index, variable must be an array", pos)
+        in
+          if rank > 0 andalso rank = indAmount andalso areInts 
+          then LValue(Index((id, tp), new_inds), pos)
+          else raise Error("array " ^ id ^ " does not have the right parameters", pos)
+        end
+    end	
+\end{lstlisting}
+The implementation compiles every index expression expecting that every index is an integer, which is the only way to represent indexes in 
+paladim. We use typesEqual to make sure that every index is integer and we have to look up the variable name in vtable to get the base address of the index. We also need to use the rank to make sure that it's under zero and that it equals the length of the indices. If these condition are not meet we raise an error. 
+\\
+\\
+In the implementation of the indexing for compiler, we made a decision to try and exploit the fact the arrays are static, i.e. we can't change
+the rank of the array on runtime. This meant we could unroll the loop to check the dimensions, which we otherwise would have to make a loop in
+Mips if our arrays were dynamic. We made a decision to split up every part of the Mips code, 
+first we got all the list dim mip code, we then got list stride code, than used the dims list to check the bounds, 
+after we used the stride list to get the index, then added that index together with the base address of the array. 
+This meant we had to use a lot of symbolic registers. In retrospect we feel that making another version that only used a few symbol 
+registers would most likely have been a better solution, since it's more likely to get spills if the compiler uses too many symbolic registers. 
+\begin{lstlisting}[style=MLStyle]
+	| compileLVal( vtab : VTab, Index ((n, Array(rank, tp)),inds) : LVAL, pos : Pos ) =
+      let 
+        val mem = case SymTab.lookup n vtab of 
+                    SOME n => n
+                  | NONE => raise Error("no such variable for array, " ^ n, pos)
+        val strideEnd = (rank * 2)-1
+        val ptr = rank * 2 *4
+        fun dims base i  = 
+          let
+            val r = "metaDataDims_"^newName()
+            val code = Mips.LW(r, base, Int.toString (i*4))
+          in
+            if i < rank then
+              [(code, r)] @ (dims base (i+1))
+            else
+              []
+          end
+        fun stride base i =
+         let
+         val r = "metaDataStride_"^newName() 
+         val code = Mips.LW(r, base, Int.toString (i*4))
+         in
+          if i < strideEnd then
+              [(code, r)] @ (stride base (i+1))
+            else
+              []
+          end
+
+        fun calculateIndices [] = []
+          | calculateIndices (exp::exps) =
+         let 
+           val temp = "indices_"^newName()
+           val code = compileExp(vtab, exp, temp)
+         in
+           [(code, temp)] @ calculateIndices exps
+         end
+
+        val arrayAddress = "metaPointer_"^newName()
+        val addressCode = [Mips.ADDI(arrayAddress, mem, makeConst ptr)]
+        val strideMeta = stride mem rank          
+        val dimsMeta = dims mem 0 
+        val compiledInds = calculateIndices inds
+
+        fun checkBounds _ [] = []
+          | checkBounds [] _ = []
+          | checkBounds ((c, r)::dmeta) ((_, r2)::exps) =
+          let
+            val tb = "bounds_"^newName()
+            val label = "passed_bound_"^newName()
+            val code = [Mips.ADDI (tb, r2, "1"), 
+                        Mips.SUB(tb, r, tb), 
+                        Mips.SLTI(tb, tb, "0"), 
+                        Mips.BNE(tb, "0", "_IllegalArrIndexError_") ]
+            in
+              [c] @ code @ (checkBounds dmeta exps)
+            end
+
+        fun computeIndexAddress [] ((c,r)::[]) place = c @ [Mips.ADD(place, r, place)] 
+          | computeIndexAddress ((c, r)::smeta) ((_, r2)::exps) place =
+          let
+            val tTemp = "index_"^newName()
+            val code = [c, Mips.MUL(tTemp, r2, r), Mips.ADD(place, tTemp, place)] 
+          in
+            code @ computeIndexAddress smeta exps place
+          end
+          | computeIndexAddress _ _ _ = raise Error("this cannot happen", pos)
+
+        val multValue = (case tp of
+                          Int => 4
+                        | Char => 1
+                        | Bool => 1)
+                          
+        val tMult = "multIndex_"^newName()
+        val tResult = "index_"^newName()
+        val init = [Mips.LI(tResult, "0")]
+        val checkCode = checkBounds dimsMeta compiledInds 
+        val indexCode = computeIndexAddress strideMeta compiledInds tResult 
+        val computeFinalAddress = [Mips.ADDI(tMult, "0", makeConst multValue),
+        Mips.MUL(tResult, tResult, tMult), Mips.ADD(arrayAddress, arrayAddress, tResult)] 
+  
+        val indCode = foldl op @ [] (map (fn (x,y) => x) compiledInds)
+        val result = addressCode @ indCode @ checkCode @ 
+        init @ indexCode @ computeFinalAddress 
+      in
+        (result, Mem (arrayAddress)) 
+      end	
+\end{lstlisting}
 
 
 
 \subsection{Testing}
+We tested our code using the test test3D.pal and testIndex.pal which uses a bunch of arrays, which tested the indexing quite well, 
+so well in fact that we found a bug in our compiler code, where we forgot to set the index register to zero before using it, 
+causing memory out of bounds. Since we also had out of bounds checks, we also had to test our indexing against invalid arguments. 
+We also had to test the Type, but type checking in index was also a requirement for the indexing to work, 
+which meant that we tested them together with the indexing. The only thing we didn't test together was the error checking in type, 
+so we also tested wrong ranks, inds being longer than rank, and inds not being integer.
+
+
+
