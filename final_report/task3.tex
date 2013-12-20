@@ -3,11 +3,11 @@ To support for arithmetical functions, the following code was changed for these
 arithmetic operators: plus, divide, times and minus. The code change is
 identical so the code change will only be shown in one instance:
 \begin{verbatim}
--        let val e1_new = typeCheckExp( vtab, e1, UnknownType )
--            val e2_new = typeCheckExp( vtab, e2, UnknownType )
+- let val e1_new = typeCheckExp( vtab, e1, UnknownType )
+-     val e2_new = typeCheckExp( vtab, e2, UnknownType )
 
-+        let val e1_new = typeCheckExp( vtab, e1, KnownType(BType Int))
-+            val e2_new = typeCheckExp( vtab, e2, KnownType(BType Int))
++ let val e1_new = typeCheckExp( vtab, e1, KnownType(BType Int))
++     val e2_new = typeCheckExp( vtab, e2, KnownType(BType Int))
 \end{verbatim}
 
 The following changes were made on AbSyn.Plus(line 179-180), AbSyn.Minus(190-191),
@@ -16,16 +16,16 @@ typeCheckExp(...) function.
 
 To support the boolean operator AbSyn.Equal, the following changes were made:
 \begin{verbatim}
--    | typeCheckExp ( vtab, AbSyn.Equal(e1, e2, pos), _ ) =
--       let val e1_new = typeCheckExp(vtab, e1, UnknownType)
--            val e2_new = typeCheckExp(vtab, e2, UnknownType )
--            val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
+- | typeCheckExp ( vtab, AbSyn.Equal(e1, e2, pos), _ ) =
+-    let val e1_new = typeCheckExp(vtab, e1, UnknownType)
+-         val e2_new = typeCheckExp(vtab, e2, UnknownType )
+-         val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
 
-+    | typeCheckExp ( vtab, AbSyn.Equal(e1, e2, pos), _) =
-+       let  val e1_new = typeCheckExp(vtab, e1, UnknownType)
-+            val tp1 = typeOfExp e1_new
-+            val e2_new = typeCheckExp(vtab, e2, KnownType(tp1))
-+            val tp2 = typeOfExp e2_new 
++ | typeCheckExp ( vtab, AbSyn.Equal(e1, e2, pos), _) =
++    let  val e1_new = typeCheckExp(vtab, e1, UnknownType)
++         val tp1 = typeOfExp e1_new
++         val e2_new = typeCheckExp(vtab, e2, KnownType(tp1))
++         val tp2 = typeOfExp e2_new 
 \end{verbatim}
 
 Here the change is that e2, expression 2 that is, is dependent on the type of
@@ -34,23 +34,23 @@ e1, expression 1.\\
 
 For AbSyn.Less to work the following changes were made:
 \begin{verbatim}
--            val e2_new = typeCheckExp(vtab, e2, UnknownType )
--            val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
+- val e2_new = typeCheckExp(vtab, e2, UnknownType )
+- val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
 
-+            val tp1 = typeOfExp e1_new
-+            val e2_new = typeCheckExp(vtab, e2, KnownType(tp1))
-+            val tp2 = typeOfExp e2_new 
++ val tp1 = typeOfExp e1_new
++ val e2_new = typeCheckExp(vtab, e2, KnownType(tp1))
++ val tp2 = typeOfExp e2_new 
 \end{verbatim}
 the type of e1\_new is found immediately, put into tp1, and then tp1 is used to
 define e2\_new, then tp2 is found through e2\_new
 \\
 For AbSyn.And and AbSyn.Or the code change was next to identical:
 \begin{verbatim}
--        let val e1_new = typeCheckExp(vtab, e1, UnknownType )
--            val e2_new = typeCheckExp(vtab, e2, UnknownType )
+- let val e1_new = typeCheckExp(vtab, e1, UnknownType )
+-     val e2_new = typeCheckExp(vtab, e2, UnknownType )
 
-+        let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
-+            val e2_new = typeCheckExp(vtab, e2, KnownType(BType Bool))
++ let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
++     val e2_new = typeCheckExp(vtab, e2, KnownType(BType Bool))
 \end{verbatim}
 Only changing \textbf{UnknownThype} to \textbf{KnownType(BType Bool)} on line
 254-255 for AbSyn.And and 264-265 for AbSyn.Or.\\
@@ -58,30 +58,35 @@ Only changing \textbf{UnknownThype} to \textbf{KnownType(BType Bool)} on line
 For AbSyn.Not a similar change is made, though since Not is a unary operator,
 only one line of change is necessary:
 \begin{verbatim}
--    | typeCheckExp ( vtab, AbSyn.Not (e1,    pos), _ ) =
--        let val e1_new = typeCheckExp(vtab, e1, UnknownType )
+- | typeCheckExp ( vtab, AbSyn.Not (e1,    pos), _ ) =
+-     let val e1_new = typeCheckExp(vtab, e1, UnknownType )
 
-+    | typeCheckExp ( vtab, AbSyn.Not (e1, pos), _ ) =
-+        let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
++ | typeCheckExp ( vtab, AbSyn.Not (e1, pos), _ ) =
++     let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
 \end{verbatim}
 On the next line etp is explicitly given a type
 \begin{verbatim}
--    | typeCheckExp ( vtab, AbSyn.FunApp ("new", args, pos), etp ) =
+- | typeCheckExp ( vtab, AbSyn.FunApp ("new", args, pos), etp ) =
 
-+    | typeCheckExp ( vtab, AbSyn.FunApp ("new", args, pos), etp as KnownType(tp)) =
++ | typeCheckExp ( vtab, 
++                  AbSyn.FunApp ("new", args, pos), etp as KnownType(tp)) =
 \end{verbatim}
 Implementation 
 \begin{verbatim}
--            SOME btp => raise Error("in type check new UNIMPLEMENTED, i.e., G-ASSIGNMENT task 3, at ", pos)
+- SOME btp => raise Error("in type check new 
++                         UNIMPLEMENTED, i.e., G-ASSIGNMENT task 3, at ", pos)
 
-+            SOME btp => let
-+                        val new_args = map (fn arg => typeCheckExp(vtab, arg, KnownType(BType Int))) args
-+                        val arg_tps = map (fn arg => typeOfExp arg) new_args
-+                        val isInts = foldl (fn (x, y) => typesEqual(BType Int, x) andalso y) true arg_tps 
-+                        in
-+                          if isInts = true then FunApp(("new", (arg_tps, SOME tp)), new_args, pos)
-+                          else raise Error("All the types in arg must be ints!", pos)
-+                        end
++ SOME btp => 
++ let
++ val new_args = map (fn arg => typeCheckExp(vtab,
++                                            arg, KnownType(BType Int))) args
++ val arg_tps = map (fn arg => typeOfExp arg) new_args
++ val isInts = foldl (fn (x, y) => typesEqual(BType Int, x) 
++                                  andalso y) true arg_tps 
++ in
++   if isInts = true then FunApp(("new", (arg_tps, SOME tp)), new_args, pos)
++   else raise Error("All the types in arg must be ints!", pos)
++ end
 \end{verbatim}
 \subsection{Testing}
 In this section we'll be testing type inference. The current codebase only
