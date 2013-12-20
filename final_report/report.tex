@@ -86,6 +86,10 @@
   breakatwhitespace=false,
 }
 
+% remove some above title to make room for toc
+\usepackage{titling}
+\setlength{\droptitle}{-80pt}
+
 \begin{document}
 \title{Introduction to Compilers (OV)\\
        G-assignment Final Version}
@@ -94,6 +98,9 @@
         Rúni Klein Hansen}
 \date{December 20, 2013 - 14:00}
 \maketitle
+
+\tableofcontents
+
 \input{introduction.tex}
 
 \input{task1.tex}
@@ -103,8 +110,11 @@
 \input{task5.tex}
 
 \input{conclusion.tex}
+
 \newpage
 \appendix
 \input{parser.tex}
+\newpage
 \input{grammarTester.tex}
+
 \end{document}
