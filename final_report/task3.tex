@@ -99,35 +99,38 @@ sides of a equality expression is unknown, it's the left hand side, that's the
 victor and thus trumphs its type over to the right hand side.\\
 The test here shows it quite good. The type on the righthand side is unknown,
 but since chr() is on the left hand side the final type is char.
-
-\begin{verbatim}
-program test_task3;
-
-procedure main()
-var a : bool;
-begin
-  a := chr(read()) = read();
-  write(a);write("\n");
-
-  // The following is commented out since it would give an error as expected
-  // since type inference only works from left to right.
-  //a := read() = chr(read());
-
-end;
-\end{verbatim}
-
+\begin{figure}[H]
+  \begin{lstlisting}[style=paladim]
+  program test_task3;
+  
+  procedure main()
+  var a : bool;
+  begin
+    a := chr(read()) = read();
+    write(a);write("\n");
+  
+    // The following is commented out since it would give an error as expected
+    // since type inference only works from left to right.
+    //a := read() = chr(read());
+  
+  end;
+  \end{lstlisting}
+\caption{Type inference testing}
+\end{figure}
+\\
 Testing the \textbf{new} function:
-
-\begin{verbatim}
-+  program test;
-+  
-+  
-+  procedure main()
-+  var a : array of array of array of int;
-+      b : int;
-+  begin 
-+      b := 2;
-+      a := new(2, 4, 5);
-+  end;
-\end{verbatim}
-
+\begin{figure}[H]
+  \begin{lstlisting}[style=paladim]
+    program test;
+    
+    
+    procedure main()
+    var a : array of array of array of int;
+        b : int;
+    begin 
+        b := 2;
+        a := new(2, 4, 5);
+    end;
+  \end{lstlisting}
+\capion{$\textbf{new}$ function testing}
+\end{figure}
