@@ -3,7 +3,7 @@
 To allow the ability of array, we had to implement the ability to index, both in the type check and the compiler. We first decided to implement
 the type checking, since we couldn't test our indexing without the type checking.
 
-\begin{lstlisting}[style=MLStyle]		
+\begin{lstlisting}[style=MLStyle, caption=type checking for indexing]		
 | typeCheckExp( vtab, AbSyn.LValue( AbSyn.Index(id, inds), pos ), _ ) =
     let 
       val new_inds = map (fn ind => typeCheckExp(vtab, ind, KnownType(BType Int))) inds
@@ -28,7 +28,9 @@ the type checking, since we couldn't test our indexing without the type checking
     end	
 \end{lstlisting}
 The implementation compiles every index expression expecting that every index is an integer, which is the only way to represent indexes in 
-paladim. We use typesEqual to make sure that every index is integer and we have to look up the variable name in vtable to get the base address of the index. We also need to use the rank to make sure that it's under zero and that it equals the length of the indices. If these condition are not meet we raise an error. 
+paladim. We use typesEqual to make sure that every index is integer and we have to look up the variable name in vtable to get the base address of the index. 
+We also need to use the rank to make sure that it's under zero and that it equals the length of the indices. If these condition are not meet we raise an error. 
+See listing 1 for the implementation.
 \\
 \\
 In the implementation of the indexing for compiler, we made a decision to try and exploit the fact the arrays are static, i.e. we can't change
@@ -38,7 +40,8 @@ first we got all the list dim mip code, we then got list stride code, than used 
 after we used the stride list to get the index, then added that index together with the base address of the array. 
 This meant we had to use a lot of symbolic registers. In retrospect we feel that making another version that only used a few symbol 
 registers would most likely have been a better solution, since it's more likely to get spills if the compiler uses too many symbolic registers. 
-\begin{lstlisting}[style=MLStyle]
+See listing 2 for the implementation of indexing for the compiler.
+\begin{lstlisting}[style=MLStyle, caption=Implementation of indexing for the compiler]
 	| compileLVal( vtab : VTab, Index ((n, Array(rank, tp)),inds) : LVAL, pos : Pos ) =
       let 
         val mem = case SymTab.lookup n vtab of 
@@ -87,7 +90,6 @@ registers would most likely have been a better solution, since it's more likely 
           | checkBounds ((c, r)::dmeta) ((_, r2)::exps) =
           let
             val tb = "bounds_"^newName()
-            val label = "passed_bound_"^newName()
             val code = [Mips.ADDI (tb, r2, "1"), 
                         Mips.SUB(tb, r, tb), 
                         Mips.SLTI(tb, tb, "0"), 
@@ -135,7 +137,59 @@ so well in fact that we found a bug in our compiler code, where we forgot to set
 causing memory out of bounds. Since we also had out of bounds checks, we also had to test our indexing against invalid arguments. 
 We also had to test the Type, but type checking in index was also a requirement for the indexing to work, 
 which meant that we tested them together with the indexing. The only thing we didn't test together was the error checking in type, 
-so we also tested wrong ranks, inds being longer than rank, and inds not being integer.
+so we also tested wrong ranks, inds being longer than rank, and inds not being integer. The aforementioned properties to test can be
+seen in the listings 3-6.
+\\
+\begin{lstlisting}[style=paladim, caption=testIndexBounds.pal tests bounds]
+program bounds;
+procedure main()
+    var x : array of array of array of int;
+        a : int;
+        b : int;
+        c : int;
+        result : int;
+begin
+    x := {{{1, 2}, {3, 4}},{{5, 6}, {7, 8}}};
+    write("which index do you want?");
+    write('\n');
+    write("array is {{{1, 2}, {3, 4}},{{5, 6}, {7, 8}}}");
+    write('\n');
 
+    a := read();
+    b := read();
+    c := read();
+    result := x[a,b,c];
+    write(result);
+end;
+\end{lstlisting}
 
+\begin{lstlisting}[style=paladim, caption=testWrongIndexType.pal tests invalid types in indexing]
+program bounds;
 
+procedure main()
+    var x : array of array of array of int;
+begin
+    x := {{{1, 2}, {3, 4}},{{5, 6}, {7, 8}}};
+    x[1,'a',3,true] := 2;
+end;
+\end{lstlisting}
+
+\begin{lstlisting}[style=paladim, caption=testZeroRank.pal tests zero rank]
+program bounds;
+
+procedure main()
+    var x : int;
+begin
+    x[0,0,0] := 2;
+end;
+\end{lstlisting}
+
+\begin{lstlisting}[style=paladim, caption=testWrongRank.pal tests wrong rank]
+program bounds;
+procedure main()
+    var x : array of array of array of int;
+begin
+    x := {{{1, 2}, {3, 4}},{{5, 6}, {7, 8}}};
+    x[1,2,3,4] := 2;
+end;
+\end{lstlisting}
