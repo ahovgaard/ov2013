@@ -29,11 +29,12 @@ the type checking, since we couldn't test our indexing without the type checking
 \end{lstlisting}
 The implementation compiles every index expression expecting that every index is an integer, which is the only way to represent indexes in 
 paladim. We use typesEqual to make sure that every index is integer and we have to look up the variable name in vtable to get the base address of the index. 
-We also need to use the rank to make sure that it's under zero and that it equals the length of the indices. If these condition are not meet we raise an error. 
+We also need to use the rank to make sure that it's under zero and that it equals the length of the indices. If these condition are not met we raise an error. 
 See listing 1 for the implementation.
 \\
 \\
-In the implementation of the indexing for compiler, we made a decision to try and exploit the fact the arrays are static, i.e. we can't change
+In the implementation of the indexing for compiler, we made a decision to try
+and exploit the fact that arrays are static, i.e. we can't change
 the rank of the array on runtime. This meant we could unroll the loop to check the dimensions, which we otherwise would have to make a loop in
 Mips if our arrays were dynamic. We made a decision to split up every part of the Mips code.
 First we got all the list dim mip code, we then got list stride code, we than used the dims list to check the bounds, 

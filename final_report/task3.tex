@@ -1,7 +1,7 @@
 \section{Task 3}
-To support for arithmetical functions, the following code was changed for these
+To add support for arithmetical functions, the following code was changed for these
 arithmetic operators: plus, divide, times and minus. The code change is
-identical so the code change will only be shown in one instance:
+identical so the code change will only be shown for one instance:
 \begin{lstlisting}[style=MLStyle]
 - let val e1_new = typeCheckExp( vtab, e1, UnknownType )
 -     val e2_new = typeCheckExp( vtab, e2, UnknownType )
@@ -51,7 +51,7 @@ For AbSyn.And and AbSyn.Or the code change was next to identical:
 + let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
 +     val e2_new = typeCheckExp(vtab, e2, KnownType(BType Bool))
 \end{lstlisting}
-Only changing \textbf{UnknownThype} to \textbf{KnownType(BType Bool)} on line
+Only changing \textbf{UnknownType} to \textbf{KnownType(BType Bool)} on line
 254-255 for AbSyn.And and 264-265 for AbSyn.Or.\\
 \\
 For AbSyn.Not a similar change is made, though since Not is a unary operator,
@@ -70,10 +70,10 @@ On the next line etp is explicitly given a type
 + | typeCheckExp ( vtab, 
 +                  AbSyn.FunApp ("new", args, pos), etp as KnownType(tp)) =
 \end{lstlisting}
-Implementation os \textbf{new} function.\\
+Implementation of the \textbf{new} function.\\
 The type is found and put into arg\_tps, then it's checking if it's an int and
-put into isInts, if isInts is true, then \emph{$FunApp(("new", (arg_tps, SOME
-tp)), new_args, pos)$} is called, otherwise an error is raised complaining about
+put into isInts, if isInts is true, then \emph{$FunApp(("new", (arg\_tps, SOME
+tp)), new\_args, pos)$} is called, otherwise an error is raised complaining about
 the type not being integer.
 
 \begin{lstlisting}[style=MLStyle]
@@ -97,7 +97,7 @@ In this section we'll be testing type inference. The current codebase only
 allows for type inference to work from left to right. Ie. if the code on both
 sides of a equality expression is unknown, it's the left hand side, that's the
 victor and thus trumphs its type over to the right hand side.\\
-The test here shows it quite good. The type on the righthand side is unknown,
+The test here shows it quite clearly. The type on the righthand side is unknown,
 but since chr() is on the left hand side the final type is char.
 \begin{figure}[H]
   \begin{lstlisting}[style=paladim]
@@ -117,8 +117,7 @@ but since chr() is on the left hand side the final type is char.
   \end{lstlisting}
 \caption{Type inference testing}
 \end{figure}
-\\
-Testing the \textbf{new} function:
+Testing the \textbf{new}-function:
 \begin{figure}[H]
   \begin{lstlisting}[style=paladim]
     program test;
@@ -132,5 +131,5 @@ Testing the \textbf{new} function:
         a := new(2, 4, 5);
     end;
   \end{lstlisting}
-\capion{$\textbf{new}$ function testing}
+\caption{The \textbf{new}-function testing}
 \end{figure}
