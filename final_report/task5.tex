@@ -204,3 +204,37 @@ and compileF (isProc, fname, args, block, pos) =
 
 
 \subsection{Testing}
+Testing of the call-by-value-result parameter passing semantics was performed
+with the test program \verb|proctest| given in the description of task 5, in the
+\verb|GroupProject.pdf| file. The procedure \verb|main| receives the two actual
+arguments \verb|x := 2| and \verb|y := 3|, which are copied into the formal
+parameters \verb|a| and \verb|b|. These are modified to \verb|a := 3| and
+\verb|b := 4| in the procedure, so when it returns, \verb|x| and \verb|y| should
+be updated to 3 and 4, respectively. This was indeed the case, so it appears
+that call-by-value-result works correctly. The test program is shown in figure
+\ref{fig_proctest}.
+
+\begin{figure}[H]
+  \begin{lstlisting}[style=paladim]
+program proctest;
+
+procedure f(a : int; b : int)
+begin
+    a := a + 1;
+    b := b + 1;
+end;
+
+procedure main()
+var
+    x : int;
+    y : int;
+begin
+   x := 2;
+   y := 3;
+   f(x, y);
+   write(x); write(' '); write(y);
+end;
+  \end{lstlisting}
+  \caption{Case for procedures in function \texttt{compileStmt}.}
+  \label{fig_compileF}
+\end{figure}
