@@ -1,0 +1,49 @@
+program test_task2;
+
+function intMul(a : int; b : int) : int
+begin
+  return a*b;
+end;
+
+function intDiv(c : int; d : int) : int
+var e : int;
+begin
+  e := c/d;
+  return e;
+end;
+
+procedure main()
+var x : int;
+    z : int;
+    n : int;
+    m : int;
+    a : bool;
+    b : bool;
+    c : bool;
+begin
+  x := 10;
+  z := 9;
+  n := intMul(5, 2);
+  write("\n");
+  write("5 * 2 = ");
+  write(n);
+  m := intDiv(10, 6);
+  write("\n");
+  write("10 / 6 = ");
+  write(m);
+  write("\n");
+  write("not true = ");
+  b := not true;
+  write(b);
+  write("\n");
+  a := not false;
+  c := a or not a;
+  write("a or not a = ");
+  write(c);
+  write("\n");
+  c := a and not a;
+  write("a and not a = ");
+  write(c);
+  write("\n");
+  b := c or not a = b and a = c;
+end;

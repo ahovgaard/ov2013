@@ -1,0 +1,12 @@
+program test_task3;
+  
+  procedure main()
+  var a : bool;
+  begin
+    a := chr(read()) = read();
+    write(a);write("\n");
+  
+    // The following is commented out since it would give an error as expected
+    // since type inference only works from left to right.
+    //a := read() = chr(read());
+end;
