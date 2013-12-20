@@ -38,8 +38,9 @@ the rank of the array on runtime. This meant we could unroll the loop to check t
 Mips if our arrays were dynamic. We made a decision to split up every part of the Mips code, 
 first we got all the list dim mip code, we then got list stride code, than used the dims list to check the bounds, 
 after we used the stride list to get the index, then added that index together with the base address of the array. 
-This meant we had to use a lot of symbolic registers. In retrospect we feel that making another version that only used a few symbol 
-registers would most likely have been a better solution, since it's more likely to get spills if the compiler uses too many symbolic registers. 
+This meant we had to use a lot of variable registers. In retrospect we feel that making another version that only used a few variable 
+registers would most likely have been a better solution, since it's more likely to get spills if the compiler uses too many variable registers(if the register allocator implements a spilling algorithm, 
+which it would have to, otherwise the assembler code wouldn't work at all). 
 See listing 2 for the implementation of indexing for the compiler.
 \begin{lstlisting}[style=MLStyle, caption=Implementation of indexing for the compiler]
 	| compileLVal( vtab : VTab, Index ((n, Array(rank, tp)),inds) : LVAL, pos : Pos ) =
