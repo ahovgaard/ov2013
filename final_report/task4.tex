@@ -141,6 +141,10 @@ which meant that we tested them together with the indexing. The only thing we di
 so we also tested wrong ranks, inds being longer than rank, and inds not being integer. The aforementioned properties to test can be
 seen in the listings 3-6.
 \\
+\\
+Listing 3 is a paladim program that allowed us to write in the indexes we wanted to check, since bound checking is done on runtime this was
+a quite good way of checking if our indexing worked, and also allowed us to check bounds.
+
 \begin{lstlisting}[style=paladim, caption=testIndexBounds.pal tests bounds]
 program bounds;
 procedure main()
@@ -163,6 +167,7 @@ begin
     write(result);
 end;
 \end{lstlisting}
+Listing 4-6 are paladim programs that are meant to fail at compile time since they are all type checking errors.
 
 \begin{lstlisting}[style=paladim, caption=testWrongIndexType.pal tests invalid types in indexing]
 program bounds;
@@ -171,7 +176,7 @@ procedure main()
     var x : array of array of array of int;
 begin
     x := {{{1, 2}, {3, 4}},{{5, 6}, {7, 8}}};
-    x[1,'a',3,true] := 2;
+    x[1,'a',true] := 2;
 end;
 \end{lstlisting}
 
@@ -194,3 +199,5 @@ begin
     x[1,2,3,4] := 2;
 end;
 \end{lstlisting}
+Using the test that we just mentioned, we can be quite sure that the implementation works, since all the tests passed.
+
