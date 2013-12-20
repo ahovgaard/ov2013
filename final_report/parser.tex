@@ -1,0 +1,239 @@
+\section{\texttt{mosmlyac} parser generator code} \label{app:grm}
+\begin{lstlisting}[style=MLStyle]
+%{
+  (* See the Moscow ML manual for the syntax and structure. Roughly:
+   *
+   * `%``{`
+   *     header (* with ML-like comments *)
+   *     Any SML code is copied to the beginning of Parser.sml, after the token
+   *     datatype declaration.
+   * `%``}`
+   *     declarations  /* with c-like comments */
+   * `%``%`
+   *     rules         /* with c-like comments */
+   * `%``%`
+   *     trailer (* with ML-like comments *)
+   *     Any SML code is copied to the end of Parser.sml.
+   * EOF
+   *
+   * The (optional) header and trailer contain ML code to include in the
+   * generated file (after the data declaration and at the end).
+   *)
+
+  type Pos   = int * int  (* position: (line, column) *)
+  type Ident = string     (* identifier *)
+  (* Unfortunately, we cannot use these types in the declarations -
+   * the code ends up _after_ the data declaration. *)
+
+  (* parse exception *)
+  exception ParseError of string * Pos
+
+
+  (* Get position tuple from Location structure, for error reporting *)
+  fun getPos () = case Location.getCurrentLocation () of
+                       Location.Loc (l, r) => (l, r)
+%}
+
+/* Token type definitions (will often be used in the Lexer) */
+
+/* Tokens use position attribute for demonstration (see below for Lexer)
+ * As mentioned, the SML code above ends up _after_ this data declaration,
+ * so we cannot use any types defined _above_ at this point of the file.
+ */
+
+/* Keywords */
+%token <int * int> TProgram   TFunction   TProcedure
+%token <int * int> TVar       TBegin      TEnd
+%token <int * int> TIf        TThen       TElse
+%token <int * int> TWhile     TDo         TReturn
+
+/* Type keywords */
+%token <int * int> TArray     TOf
+%token <int * int> TInt       TChar       TBool
+
+/* Symbols */
+%token <int * int> TSemi      TColon      TComma      TAssign
+
+/* Operations */
+%token <int * int> TPlus      TMinus      TTimes      TSlash /* arithmetic */
+%token <int * int> TEq        TLess                          /* comparison */
+%token <int * int> TAnd       TOr         TNot               /* bool */
+
+/* Parentheses of different kind */
+%token <int * int> TLParen    TRParen
+%token <int * int> TLCurly    TRCurly
+%token <int * int> TLBracket  TRBracket
+
+/* Identifiers */
+%token <string * (int * int)> TId 
+
+/* Literals */
+%token <int * (int * int)>    TNLit
+%token <bool * (int * int)>   TBLit
+%token <char * (int * int)>   TCLit
+%token <string * (int * int)> TSLit
+
+/* EOF special token */
+%token <int * int>            TEOF
+
+
+/* Precedence and associativity */
+
+/* fixing the dangling-else ambiguity */
+%right TThen TElse 
+
+%left TOr
+%left TAnd
+%left TEq 
+%left TLess
+%left TPlus TMinus
+%left TTimes TSlash
+
+
+/* high precedence, right associative, unary operator 'not' */
+%right TNot
+
+/* fixed the Decs problem with nonassoc */ 
+%nonassoc TSemi
+%nonassoc TId
+
+/* Start symbol */
+%start Prog
+
+/******************************************************************************
+ * Types returned by rules below 
+ *****************************************************************************/
+
+/* Program structure */
+%type <AbSyn.Prog>        Prog
+%type <AbSyn.FunDec list> FunDecs
+%type <AbSyn.FunDec>      FunDec
+%type <AbSyn.StmtBlock>   Block
+%type <AbSyn.Dec list>    DBlock
+%type <AbSyn.Stmt list>   SBlock
+%type <AbSyn.Stmt list>   StmtSeq
+
+/* Variables and parameter declarations, types */
+%type <AbSyn.Dec list>    PDecl
+%type <AbSyn.Dec list>    Params
+%type <AbSyn.Dec>         Dec
+%type <AbSyn.Dec list>    Decs
+%type <AbSyn.Type>        Type
+
+/* Statements */
+%type <AbSyn.Stmt>        Stmt
+
+/* Function and procedure parameters and index lists */
+%type <AbSyn.Exp list>    CallParams
+%type <AbSyn.Exp list>    Exps
+
+/* L-Values and expressions */
+%type <AbSyn.LVAL>        LVal
+%type <AbSyn.Exp option>  Ret
+%type <AbSyn.Exp>         Exp
+
+%%
+
+/******************************************************************************
+ * Rules - a separate start rule is added automatically
+ *****************************************************************************/
+
+/* Program structure */
+Prog    : TProgram TId TSemi FunDecs TEOF { $4 } /* $4 : AbSyn.FunDec list */
+
+FunDecs : FunDecs FunDec { $1 @ [$2] }
+        | FunDec         { [$1] }
+
+FunDec  : TFunction TId TLParen PDecl TRParen TColon Type Block TSemi
+            /* Func of Type * Ident * Dec list * StmtBlock * Pos */
+            { AbSyn.Func ($7, #1 $2, $4, $8, getPos ()) }
+        | TProcedure TId TLParen PDecl TRParen Block TSemi
+            /* Proc of Ident * Dec list * StmtBlock * Pos */
+            { AbSyn.Proc (#1 $2, $4, $6, getPos ()) }
+
+Block   : DBlock SBlock { AbSyn.Block ($1, $2) }
+
+DBlock  : TVar Decs { $2 } /* $2 : AbSyn.Dec list */
+        |           { [] }
+
+SBlock  : TBegin StmtSeq TSemi TEnd { $2 } /* $2 : AbSyn.Stmt list */
+        | Stmt                      { [$1] } /* $1 : AbSyn.Stmt */
+
+StmtSeq : StmtSeq TSemi Stmt { $1 @ [$3] }  /* AbSyn.Stmt list */
+        | Stmt               { [$1] }
+
+
+/* Variables and parameter declarations, types */
+PDecl  : Params             { $1 } /* AbSyn.Dec list */
+       |                    { [] }
+
+Params : Params TSemi Dec   { $1 @ [$3] } /* AbSyn.Dec list */
+       | Dec                { [$1] }
+
+Dec    : TId TColon Type    /* AbSyn.Dec of Ident * Type * Pos */
+                            { AbSyn.Dec (#1 $1, $3, getPos ()) }
+                            
+Decs   : Dec TSemi Decs     { $1 :: $3 }
+       | Dec TSemi          { [$1] }
+
+Type   : TInt               { AbSyn.Int (getPos ()) }
+       | TChar              { AbSyn.Char (getPos ()) }
+       | TBool              { AbSyn.Bool (getPos ()) }
+       | TArray TOf Type    { AbSyn.Array ($3, getPos ()) }
+
+
+/* Statements */
+Stmt : TId TLParen CallParams TRParen  /* ProcCall of Ident * Exp list * Pos */
+                                       { AbSyn.ProcCall (#1 $1, $3, getPos ()) }
+     | TIf Exp TThen Block TElse Block
+         /* IfThEl of Exp * StmtBlock * StmtBlock * Pos */
+         { AbSyn.IfThEl ($2, $4, $6, getPos ()) }
+     | TIf Exp TThen Block            
+         /* IfThEl of Exp * StmtBlock * StmtBLock * Pos */
+         { AbSyn.IfThEl ($2, $4, AbSyn.Block ([], []), getPos ()) }
+     | TWhile Exp TDo Block            /* While of Exp * StmtBlock * Pos */
+                                       { AbSyn.While ($2, $4, getPos ()) }
+     | TReturn Ret                     /* Return of Exp option * Pos */
+                                       { AbSyn.Return ($2, getPos ()) }
+     | LVal TAssign Exp                /* Assign of LVAL * Exp * Pos */
+                                       { AbSyn.Assign ($1, $3, getPos ()) }
+
+
+/* Function and procedure parameters and index lists */
+CallParams : Exps { $1 }
+           |      { [] }
+
+Exps       : Exp TComma Exps { $1 :: $3 }
+           | Exp             { [$1] }
+
+
+/* L-Values and expressions */
+LVal : TId                          { AbSyn.Var (#1 $1) }
+     | TId TLBracket Exps TRBracket { AbSyn.Index (#1 $1, $3) }
+
+Ret  : Exp { SOME $1 } /* AbSyn.Exp option */
+     |     { NONE }
+
+Exp  : TNLit { AbSyn.Literal ( AbSyn.BVal (AbSyn.Num (#1 $1)), getPos ()) }
+     | TBLit { AbSyn.Literal ( AbSyn.BVal (AbSyn.Log (#1 $1)), getPos ()) }
+     | TCLit { AbSyn.Literal ( AbSyn.BVal (AbSyn.Chr (#1 $1)), getPos ()) }
+     | TSLit { AbSyn.StrLit (#1 $1, getPos ()) }
+     | TLCurly Exps TRCurly { AbSyn.ArrLit ($2, getPos ()) }
+     | LVal { AbSyn.LValue ($1, getPos ()) }
+     | TNot Exp { AbSyn.Not ($2, getPos ()) }
+     | TLParen Exp TRParen { $2 }
+     | TId TLParen CallParams TRParen { AbSyn.FunApp (#1 $1, $3, getPos ()) }
+
+     | Exp TPlus  Exp { AbSyn.Plus ($1, $3, getPos ()) }
+     | Exp TMinus Exp { AbSyn.Minus ($1, $3, getPos ()) }
+     | Exp TTimes Exp { AbSyn.Times ($1, $3, getPos ()) }
+     | Exp TSlash Exp { AbSyn.Div ($1, $3, getPos ()) }
+     | Exp TEq    Exp { AbSyn.Equal ($1, $3, getPos ()) }
+     | Exp TLess  Exp { AbSyn.Less ($1, $3, getPos ()) }
+     | Exp TAnd   Exp { AbSyn.And ($1, $3, getPos ()) }
+     | Exp TOr    Exp { AbSyn.Or ($1, $3, getPos ()) }
+
+%%
+
+(* mosmlyac trailer *)
+\end{lstlisting}
