@@ -1,0 +1,8 @@
+program bounds;
+
+
+procedure main()
+    var x : int;
+begin
+    x[0,0,0] := 2;
+end;
