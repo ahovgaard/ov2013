@@ -1,3 +1,240 @@
 \section{Task 5}
+The fifth task was to implement call-by-value-result semantics for procedures,
+which means that procedures work on a local copy of its arguments, but copy the
+values of these back into the given arguments when it returns.
+
+\subsection{Interpreter}
+This parameter passing strategy is implemented in both the \textsf{Paladim}
+interpreter and in the \textsc{Mips} code generator. In the interpreter module,
+\verb|TpInterpret.sml|, the \verb|callFun| function was updated in the case when
+the function identifier is predefined and the  option return type is
+\verb|NONE|, i.e. when the called function is a procedure without a return a
+value.\\
+In this case, a new function \verb|updateOuterVtable| is applied to each pair of
+actual expression argument and formal argument of the function call, using the
+code shown in figure \ref{fig_callFun}
+ 
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+and callFun ( (rtp : Type option, fid : string, fargs : Dec list,
+               body : StmtBlock, pdcl : Pos),
+              aargs : Value list, aexps : Exp list, vtab, ftab, pcall : Pos
+            ) : Value option =
+  case fid of
+       (* treating "special" functions such as ord/chr/write, etc. *)
+
+  (* ... *)
+
+     | other    =>
+         let val new_vtab = bindTypeIds(fargs, aargs, fid, pdcl, pcall)
+             val res  = execBlock( body, new_vtab, ftab )
+         in case (rtp, res) of
+                 (NONE  , _)      => (app (updateOuterVtable vtab new_vtab)
+                                          (ListPair.zip (aexps, fargs));
+                                     NONE)
+               | (SOME t, SOME r) => (* ... *)
+         end
+  \end{lstlisting}
+  \caption{Case for procedure call in \texttt{callFun}.}
+  \label{fig_callFun}
+\end{figure}
+
+\noindent
+The function \verb|updateOuterVtable| looks up the identifiers of the actual
+argument and the formal argument, and if these both exist, the formal argument
+reference is assigned the dereferenced value of the actual argument, using the
+imperative SML references feature. The \verb|updateOuterVtable| function is
+shown in figure \ref{fig_updateOuterVtable}.
+ 
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+(* Update the outer vtable with data from the inner vtable. Here, out_exp is
+ * an expression in a call, e.g. x in f(x), and in_arg is the local argument
+ * name in f, e.g. m when 'procedure f(m) ... end' is defined. Remember that
+ * call by value result requires that argument expressions are variable names,
+ * i.e. expressions like '2 + x' do not work, since '2 * x' is not an LValue
+ * variable name.
+ *)
+and updateOuterVtable vtabOuter vtabInner (LValue out_exp, Dec((s, t), pos)) = 
+  let
+    fun getIdent (Var((s, t)), _)      = s
+      | getIdent (Index((s, t), _), _) = s
+    
+    fun getPos (Var((s, t)), pos)      = pos
+      | getPos (Index((s, t), _), pos) = pos
+
+    val ident = getIdent out_exp
+    val finalValue  = SymTab.lookup s vtabInner
+    val modifyValue = SymTab.lookup ident vtabOuter
+  in
+    case (modifyValue, finalValue) of
+         (NONE, NONE)      =>
+            raise Error("Could not find the final value for call by value \
+                        \result, " ^ s, getPos(out_exp))
+       | (SOME m, SOME f)  => (m := !f; ())
+       | (_, _)            =>
+            raise Error("Could not find the final value for call by value \
+                        \result, " ^ s, getPos(out_exp))
+  end
+
+  | updateOuterVtable _ _ _ = ()
+  \end{lstlisting}
+  \caption{Function \texttt{updateOuterVtable}.}
+  \label{fig_updateOuterVtable}
+\end{figure}
+
+\subsection{\textsc{Mips} code generation}
+To make the call-by-value-result strategy work in code generation, a few changes
+were made a few places in the \verb|Compiler.sml| file. The \verb|putArgs|
+function, recursively compiling expressions given as arguments to a procedure
+and generating \textsc{Mips} \verb|MOVE| instruction for moving arguments into
+registers for the procedure to work on, was modified to also generate and return
+a procedure stack frame epilogue that moves the modified values in the registers
+back into the actual arguments if these are \verb|LValue| types, i.e. if they
+can be assigned values, e.g. variables and indexed arrays. The modified version
+of \verb|putArgs| is shown figure \ref{fig_putArgs}.\\
+\\
+If the expression \verb|e| is of type \verb|LValue|, the name of that identifier
+is looked up in the symbol table and this symbolic register is used in the
+generation of \textsc{Mips} code for moving the content of argument registers back
+into the lvalues given as arguments to the procedure.
+
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+(* move args to callee registers *)
+and putArgs [] vtable reg = ([], reg, [])
+  | putArgs (e::es) vtable reg =
+    let
+        val t1 = "_funarg_"^newName()
+        val code1 = compileExp(vtable, e, t1)
+
+        val lvalIdentOption =
+          case e of LValue (Var (n, _), _)          => SOME n
+                  | LValue ((Index ((n, _), _)), _) => SOME n
+                  | _                               => NONE
+
+        fun lvalIdentLookup n =
+          case SymTab.lookup n vtable of
+               SOME t => t
+             | NONE   => raise Error ("Variable is not found in vtable: "
+                                      ^ n, (0,0))
+
+        val moveBack =
+          case lvalIdentOption of
+               SOME n => [Mips.MOVE (lvalIdentLookup n, makeConst reg)]
+             | NONE   => []
+
+        val (code2, maxreg, epi) = putArgs es vtable (reg+1)
+    in
+        (   code1                          (* compute arg1 *)
+          @ code2                          (* compute rest *)
+          @ [Mips.MOVE (makeConst reg,t1)] (* store in reg *)
+          , maxreg
+          , epi @ moveBack)                (* copy back from regs to args *)
+    end
+  \end{lstlisting}
+  \caption{Function \texttt{putArgs}.}
+  \label{fig_putArgs}
+\end{figure}
+
+\noindent
+These generated instructions are placed in the program in the case of a
+procedure call in the \verb|compileStmt| function, they are simply returned from
+a call to \verb|putArgs| and placed after a jump-and-link instruction, jumping
+to the procedure code and are therefore executed after the procedure returns.
+This change is shown in figure \ref{fig_compileStmt}. The epilogue code is
+denoted be \verb|epi|.
+
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+| compileStmt(vtable, s, exitLabel) =
+    case s of 
+
+      (* ... *)
+
+      | ProcCall ((n,_), es, p) => 
+        let
+            val (mvcode, maxreg, epi) = putArgs es vtable minReg
+        in
+            mvcode
+          @ [Mips.JAL (n, List.tabulate (maxreg, fn reg => makeConst reg))]
+          @ epi
+        end
+  \end{lstlisting}
+  \caption{Case for procedures in function \texttt{compileStmt}.}
+  \label{fig_compileStmt}
+\end{figure}
+
+\noindent
+A similar change is made to the \verb|compileF| function, as shown in figure
+\ref{fig_compileF}.
+
+\begin{figure}[H]
+  \begin{lstlisting}[style=MLStyle]
+and compileF (isProc, fname, args, block, pos) =
+  let val (movePairs, vtable) = getMovePairs args [] minReg
+      val argcode = map (fn (vname, reg) => Mips.MOVE (vname, reg)) movePairs
+      val rargcode = if isProc
+                     then map (fn (vname, reg) => Mips.MOVE (reg, vname)) movePairs
+                     else []
+      val body = compileStmts block vtable (fname ^ "_exit")
+      val (body1, _, maxr, spilled) =  (* call register allocator *)
+          RegAlloc.registerAlloc ( argcode @ body @ rargcode @
+                                   [Mips.LABEL (fname^"_exit")])
+                                 ["2"] minReg maxCaller maxReg 0
+                                 (* 2 contains return val*)
+      val (savecode, restorecode, offset) = (* save/restore callee-saves *)
+          stackSave (maxCaller+1) maxr [] [] (4*spilled)
+  in  [Mips.COMMENT ("Function " ^ fname),
+         Mips.LABEL fname,       (* function label *)
+         Mips.SW (RA, SP, "-4"), (* save return address *)
+         Mips.ADDI (SP,SP,makeConst (~4-offset))] (* move SP "up" *)
+      @ savecode                 (* save callee-saves registers *)
+      @ body1                    (* code for function body *)
+     (* @ [Mips.LABEL (fname^"_exit")] (* exit label *)*)
+      @ restorecode              (* restore callee-saves registers *)
+      @ [Mips.ADDI (SP,SP,makeConst (4+offset))] (* move SP "down" *)
+      @ [Mips.LW (RA, SP, "-4"),  (* restore return addr *)
+         Mips.JR (RA, [])]       (* return *)
+  end
+  \end{lstlisting}
+  \caption{Case for procedures in function \texttt{compileStmt}.}
+  \label{fig_compileF}
+\end{figure}
+
 
 \subsection{Testing}
+Testing of the call-by-value-result parameter passing semantics was performed
+with the test program \verb|proctest| given in the description of task 5, in the
+\verb|GroupProject.pdf| file. The procedure \verb|main| receives the two actual
+arguments \verb|x := 2| and \verb|y := 3|, which are copied into the formal
+parameters \verb|a| and \verb|b|. These are modified to \verb|a := 3| and
+\verb|b := 4| in the procedure, so when it returns, \verb|x| and \verb|y| should
+be updated to 3 and 4, respectively. This was indeed the case, so it appears
+that call-by-value-result works correctly. The test program is shown in figure
+\ref{fig_proctest}.
+
+\begin{figure}[H]
+  \begin{lstlisting}[style=paladim]
+program proctest;
+
+procedure f(a : int; b : int)
+begin
+    a := a + 1;
+    b := b + 1;
+end;
+
+procedure main()
+var
+    x : int;
+    y : int;
+begin
+   x := 2;
+   y := 3;
+   f(x, y);
+   write(x); write(' '); write(y);
+end;
+  \end{lstlisting}
+  \caption{Case for procedures in function \texttt{compileStmt}.}
+  \label{fig_compileF}
+\end{figure}
