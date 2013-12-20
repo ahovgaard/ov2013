@@ -2,87 +2,96 @@
 To support for arithmetical functions, the following code was changed for these
 arithmetic operators: plus, divide, times and minus. The code change is
 identical so the code change will only be shown in one instance:
-\begin{verbatim}
--        let val e1_new = typeCheckExp( vtab, e1, UnknownType )
--            val e2_new = typeCheckExp( vtab, e2, UnknownType )
+\begin{lstlisting}[style=MLStyle]
+- let val e1_new = typeCheckExp( vtab, e1, UnknownType )
+-     val e2_new = typeCheckExp( vtab, e2, UnknownType )
 
-+        let val e1_new = typeCheckExp( vtab, e1, KnownType(BType Int))
-+            val e2_new = typeCheckExp( vtab, e2, KnownType(BType Int))
-\end{verbatim}
++ let val e1_new = typeCheckExp( vtab, e1, KnownType(BType Int))
++     val e2_new = typeCheckExp( vtab, e2, KnownType(BType Int))
+\end{lstlisting}
 
-The following changes were made on AbSyn.Plus(line 179-180), AbSyn.Minus(190-191),
+The changes above were made on AbSyn.Plus(line 179-180), AbSyn.Minus(190-191),
 AbSyn.Times(201-202) and AbSyn.Divide(211-212), these changes are inside the
-typeCheckExp(...) function.
-
+typeCheckExp(...) function.\\
+\\
 To support the boolean operator AbSyn.Equal, the following changes were made:
-\begin{verbatim}
--    | typeCheckExp ( vtab, AbSyn.Equal(e1, e2, pos), _ ) =
--       let val e1_new = typeCheckExp(vtab, e1, UnknownType)
--            val e2_new = typeCheckExp(vtab, e2, UnknownType )
--            val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
+\begin{lstlisting}[style=MLStyle]
+- | typeCheckExp ( vtab, AbSyn.Equal(e1, e2, pos), _ ) =
+-    let val e1_new = typeCheckExp(vtab, e1, UnknownType)
+-         val e2_new = typeCheckExp(vtab, e2, UnknownType )
+-         val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
 
-+    | typeCheckExp ( vtab, AbSyn.Equal(e1, e2, pos), _) =
-+       let  val e1_new = typeCheckExp(vtab, e1, UnknownType)
-+            val tp1 = typeOfExp e1_new
-+            val e2_new = typeCheckExp(vtab, e2, KnownType(tp1))
-+            val tp2 = typeOfExp e2_new 
-\end{verbatim}
++ | typeCheckExp ( vtab, AbSyn.Equal(e1, e2, pos), _) =
++    let  val e1_new = typeCheckExp(vtab, e1, UnknownType)
++         val tp1 = typeOfExp e1_new
++         val e2_new = typeCheckExp(vtab, e2, KnownType(tp1))
++         val tp2 = typeOfExp e2_new 
+\end{lstlisting}
 
 Here the change is that e2, expression 2 that is, is dependent on the type of
 e1, expression 1.\\
 \\
-
 For AbSyn.Less to work the following changes were made:
-\begin{verbatim}
--            val e2_new = typeCheckExp(vtab, e2, UnknownType )
--            val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
+\begin{lstlisting}[style=MLStyle]
+- val e2_new = typeCheckExp(vtab, e2, UnknownType )
+- val (tp1, tp2) = (typeOfExp e1_new, typeOfExp e2_new)
 
-+            val tp1 = typeOfExp e1_new
-+            val e2_new = typeCheckExp(vtab, e2, KnownType(tp1))
-+            val tp2 = typeOfExp e2_new 
-\end{verbatim}
++ val tp1 = typeOfExp e1_new
++ val e2_new = typeCheckExp(vtab, e2, KnownType(tp1))
++ val tp2 = typeOfExp e2_new 
+\end{lstlisting}
 the type of e1\_new is found immediately, put into tp1, and then tp1 is used to
 define e2\_new, then tp2 is found through e2\_new
 \\
 For AbSyn.And and AbSyn.Or the code change was next to identical:
-\begin{verbatim}
--        let val e1_new = typeCheckExp(vtab, e1, UnknownType )
--            val e2_new = typeCheckExp(vtab, e2, UnknownType )
+\begin{lstlisting}[style=MLStyle]
+- let val e1_new = typeCheckExp(vtab, e1, UnknownType )
+-     val e2_new = typeCheckExp(vtab, e2, UnknownType )
 
-+        let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
-+            val e2_new = typeCheckExp(vtab, e2, KnownType(BType Bool))
-\end{verbatim}
++ let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
++     val e2_new = typeCheckExp(vtab, e2, KnownType(BType Bool))
+\end{lstlisting}
 Only changing \textbf{UnknownThype} to \textbf{KnownType(BType Bool)} on line
 254-255 for AbSyn.And and 264-265 for AbSyn.Or.\\
 \\
 For AbSyn.Not a similar change is made, though since Not is a unary operator,
 only one line of change is necessary:
-\begin{verbatim}
--    | typeCheckExp ( vtab, AbSyn.Not (e1,    pos), _ ) =
--        let val e1_new = typeCheckExp(vtab, e1, UnknownType )
+\begin{lstlisting}[style=MLStyle]
+- | typeCheckExp ( vtab, AbSyn.Not (e1,    pos), _ ) =
+-     let val e1_new = typeCheckExp(vtab, e1, UnknownType )
 
-+    | typeCheckExp ( vtab, AbSyn.Not (e1, pos), _ ) =
-+        let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
-\end{verbatim}
++ | typeCheckExp ( vtab, AbSyn.Not (e1, pos), _ ) =
++     let val e1_new = typeCheckExp(vtab, e1, KnownType(BType Bool))
+\end{lstlisting}
 On the next line etp is explicitly given a type
-\begin{verbatim}
--    | typeCheckExp ( vtab, AbSyn.FunApp ("new", args, pos), etp ) =
+\begin{lstlisting}[style=MLStyle]
+- | typeCheckExp ( vtab, AbSyn.FunApp ("new", args, pos), etp ) =
 
-+    | typeCheckExp ( vtab, AbSyn.FunApp ("new", args, pos), etp as KnownType(tp)) =
-\end{verbatim}
-Implementation 
-\begin{verbatim}
--            SOME btp => raise Error("in type check new UNIMPLEMENTED, i.e., G-ASSIGNMENT task 3, at ", pos)
++ | typeCheckExp ( vtab, 
++                  AbSyn.FunApp ("new", args, pos), etp as KnownType(tp)) =
+\end{lstlisting}
+Implementation os \textbf{new} function.\\
+The type is found and put into arg\_tps, then it's checking if it's an int and
+put into isInts, if isInts is true, then \emph{$FunApp(("new", (arg_tps, SOME
+tp)), new_args, pos)$} is called, otherwise an error is raised complaining about
+the type not being integer.
 
-+            SOME btp => let
-+                        val new_args = map (fn arg => typeCheckExp(vtab, arg, KnownType(BType Int))) args
-+                        val arg_tps = map (fn arg => typeOfExp arg) new_args
-+                        val isInts = foldl (fn (x, y) => typesEqual(BType Int, x) andalso y) true arg_tps 
-+                        in
-+                          if isInts = true then FunApp(("new", (arg_tps, SOME tp)), new_args, pos)
-+                          else raise Error("All the types in arg must be ints!", pos)
-+                        end
-\end{verbatim}
+\begin{lstlisting}[style=MLStyle]
+- SOME btp => raise Error("in type check new 
+-                         UNIMPLEMENTED, i.e., G-ASSIGNMENT task 3, at ", pos)
+
++ SOME btp => 
++ let
++ val new_args = map (fn arg => typeCheckExp(vtab,
++                                            arg, KnownType(BType Int))) args
++ val arg_tps = map (fn arg => typeOfExp arg) new_args
++ val isInts = foldl (fn (x, y) => typesEqual(BType Int, x) 
++                                  andalso y) true arg_tps 
++ in
++   if isInts = true then FunApp(("new", (arg_tps, SOME tp)), new_args, pos)
++   else raise Error("All the types in arg must be ints!", pos)
++ end
+\end{lstlisting}
 \subsection{Testing}
 In this section we'll be testing type inference. The current codebase only
 allows for type inference to work from left to right. Ie. if the code on both
@@ -90,20 +99,38 @@ sides of a equality expression is unknown, it's the left hand side, that's the
 victor and thus trumphs its type over to the right hand side.\\
 The test here shows it quite good. The type on the righthand side is unknown,
 but since chr() is on the left hand side the final type is char.
-
-
-\begin{verbatim}
-program test_task3;
-
-procedure main()
-var a : bool;
-begin
-  a := chr(read()) = read();
-  write(a);write("\n");
-
-  // The following is commented out since it would give an error as expected
-  // since type inference only works from left to right.
-  //a := read() = chr(read());
-
-end;
-\end{verbatim}
+\begin{figure}[H]
+  \begin{lstlisting}[style=paladim]
+  program test_task3;
+  
+  procedure main()
+  var a : bool;
+  begin
+    a := chr(read()) = read();
+    write(a);write("\n");
+  
+    // The following is commented out since it would give an error as expected
+    // since type inference only works from left to right.
+    //a := read() = chr(read());
+  
+  end;
+  \end{lstlisting}
+\caption{Type inference testing}
+\end{figure}
+\\
+Testing the \textbf{new} function:
+\begin{figure}[H]
+  \begin{lstlisting}[style=paladim]
+    program test;
+    
+    
+    procedure main()
+    var a : array of array of array of int;
+        b : int;
+    begin 
+        b := 2;
+        a := new(2, 4, 5);
+    end;
+  \end{lstlisting}
+\capion{$\textbf{new}$ function testing}
+\end{figure}

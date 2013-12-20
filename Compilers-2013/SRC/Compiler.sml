@@ -510,7 +510,6 @@ struct
             | checkBounds ((c, r)::dmeta) ((_, r2)::exps) =
             let
               val tb = "bounds_"^newName()
-              val label = "passed_bound_"^newName()
               val code = [Mips.ADDI (tb, r2, "1"), Mips.SUB(tb, r, tb), Mips.SLTI(tb, tb, "0"),
                           Mips.BNE(tb, "0", "_IllegalArrIndexError_") ]
             in
